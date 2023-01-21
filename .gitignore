@@ -20,3 +20,4 @@ sonar-scan.sh
 .scannerwork/
 /config.test.yml
 .DS_Store
+local-files/
