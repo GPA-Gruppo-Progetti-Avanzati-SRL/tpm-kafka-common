@@ -1,4 +1,4 @@
-module tpm-kafka-common
+module github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common
 
 go 1.19
 

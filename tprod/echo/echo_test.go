@@ -2,6 +2,9 @@ package echo_test
 
 import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/echo"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -13,9 +16,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"tpm-kafka-common/kafkalks"
-	"tpm-kafka-common/tprod"
-	"tpm-kafka-common/tprod/echo"
 )
 
 var cfg kafkalks.Config

@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/rs/zerolog/log"
 	"sync"
-	"tpm-kafka-common/kafkalks"
 
 	"strings"
 	"time"

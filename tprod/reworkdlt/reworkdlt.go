@@ -1,11 +1,11 @@
 package reworkdlt
 
 import (
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/echo"
 	"github.com/rs/zerolog/log"
 	"io"
 	"time"
-	"tpm-kafka-common/tprod"
-	"tpm-kafka-common/tprod/echo"
 )
 
 type Config struct {
