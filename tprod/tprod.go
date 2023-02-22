@@ -63,7 +63,8 @@ func (tp *transformerProducerImpl) SetParent(s Server) {
 }
 
 func (tp *transformerProducerImpl) Start() {
-	log.Info().Msg("starting transformer producer")
+	const semLogContext = "t-prod::start"
+	log.Info().Msg(semLogContext)
 
 	// Add to wait group
 	if tp.wg != nil {
@@ -71,7 +72,7 @@ func (tp *transformerProducerImpl) Start() {
 	}
 
 	if len(tp.producers) == 0 {
-		log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("no to-topics configured.... skipping monitoring events.")
+		log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " no to-topics configured.... skipping monitoring events.")
 	}
 
 	for _, p := range tp.producers {
@@ -81,7 +82,7 @@ func (tp *transformerProducerImpl) Start() {
 
 	err := tp.consumer.Subscribe(tp.cfg.FromTopic.Name, nil)
 	if err != nil {
-		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("topic subscription error")
+		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " topic subscription error")
 		return
 	}
 
@@ -89,13 +90,14 @@ func (tp *transformerProducerImpl) Start() {
 }
 
 func (tp *transformerProducerImpl) Close() {
-	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("signalling shutdown transformer producer")
+	const semLogContext = "t-prod::close"
+	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " signalling shutdown transformer producer")
 	close(tp.quitc)
 }
 
 func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Producer) {
-
-	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("starting monitor producer events")
+	const semLogContext = "t-prod::monitor-producer"
+	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " starting monitor producer events")
 
 	exitFromLoop := false
 	for e := range producer.Events() {
@@ -103,16 +105,16 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
-				log.Info().Interface("event", ev).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("Delivery failed")
+				log.Info().Interface("event", ev).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery failed")
 				if err := tp.abortTransaction(nil, true); err != nil {
-					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("abort transaction")
+					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
 				}
 
 				if tp.cfg.Exit.OnFail {
 					exitFromLoop = true
 				}
 			} else {
-				log.Trace().Interface("partition", ev.TopicPartition).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("Delivered message")
+				log.Trace().Interface("partition", ev.TopicPartition).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivered message")
 			}
 		}
 
@@ -122,12 +124,12 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 	}
 
 	close(tp.monitorQuitc)
-	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("exiting from monitor producer events")
+	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting from monitor producer events")
 }
 
 func (tp *transformerProducerImpl) pollLoop() {
-
-	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("starting polling loop")
+	const semLogContext = "t-prod::poll-loop"
+	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " starting polling loop")
 
 	ticker := time.NewTicker(tp.cfg.TickInterval)
 
@@ -141,13 +143,13 @@ func (tp *transformerProducerImpl) pollLoop() {
 				return
 			}
 		case <-tp.quitc:
-			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("terminating poll loop")
+			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " terminating poll loop")
 			ticker.Stop()
 			tp.shutDown(nil)
 			return
 
 		case <-tp.monitorQuitc:
-			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("monitor quitted")
+			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " monitor quitted")
 			ticker.Stop()
 			tp.shutDown(errors.New(tp.cfg.Name + " monitor producer error"))
 			return
@@ -156,9 +158,9 @@ func (tp *transformerProducerImpl) pollLoop() {
 			if isMsg, err := tp.poll(); err != nil {
 				if err != io.EOF || tp.cfg.Exit.OnEof {
 					if tp.cfg.Exit.OnEof {
-						log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("poll eof reached, transform producer exiting")
+						log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " poll eof reached, transform producer exiting")
 					} else {
-						log.Error().Str(semLogTransformerProducerId, tp.cfg.Name).Err(err).Msg("poll error")
+						log.Error().Str(semLogTransformerProducerId, tp.cfg.Name).Err(err).Msg(semLogContext + " poll error")
 					}
 
 					ticker.Stop()
@@ -170,7 +172,7 @@ func (tp *transformerProducerImpl) pollLoop() {
 				tp.numberOfMessages++
 				if tp.cfg.Exit.EofAfterN > 0 && tp.numberOfMessages >= tp.cfg.Exit.EofAfterN {
 					if tp.cfg.Exit.OnEof {
-						log.Info().Int("number-of-messages", tp.numberOfMessages).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("poll max number of events reached, transform producer exiting....")
+						log.Info().Int("number-of-messages", tp.numberOfMessages).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " poll max number of events reached, transform producer exiting....")
 						tp.Close()
 					}
 				}
@@ -184,8 +186,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 }
 
 func (tp *transformerProducerImpl) shutDown(err error) {
-
-	const semLogContext = "t-prod shutdown"
+	const semLogContext = "t-prod::shutdown"
 
 	tp.shutdownSync.Do(func() {
 		if tp.wg != nil {
@@ -203,7 +204,7 @@ func (tp *transformerProducerImpl) shutDown(err error) {
 		tp.consumer = nil
 
 		if tp.parent != nil {
-			tp.parent.TransofmerProducerTerminated(err)
+			tp.parent.TransformerProducerTerminated(err)
 		} else {
 			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " parent has not been set....")
 		}
@@ -212,24 +213,24 @@ func (tp *transformerProducerImpl) shutDown(err error) {
 }
 
 func (tp *transformerProducerImpl) poll() (bool, error) {
-
+	const semLogContext = "t-prod::poll"
 	var err error
 
 	isMessage := false
 	ev := tp.consumer.Poll(tp.cfg.FromTopic.MaxPollTimeout)
 	switch e := ev.(type) {
 	case kafka.AssignedPartitions:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("assigned partitions")
+		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
 
 		if err = tp.consumer.Assign(e.Partitions); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("assigned partitions")
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
 		}
 		tp.partitionsCnt = len(e.Partitions)
 		tp.eofCnt = 0
 	case kafka.RevokedPartitions:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("revoked partitions")
+		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 		if err = tp.consumer.Unassign(); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("revoked partitions")
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 		}
 
 		if tp.txActive {
@@ -248,14 +249,14 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 		defer span.Finish()
 
 		if err = tp.beginTransaction(false); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("error beginning transaction")
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error beginning transaction")
 			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo)
 			return isMessage, err
 		}
 
 		msg, bamData, err := tp.processor.Process(e, span)
 		if err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("error processing message")
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
 			_ = tp.abortTransaction(context.Background(), true)
 			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
 			return isMessage, err
@@ -263,7 +264,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 
 		err = tp.produce2Topic(msg)
 		if err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("error producing output message")
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error producing output message")
 			_ = tp.abortTransaction(context.Background(), true)
 			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
 			return isMessage, err
@@ -278,16 +279,16 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
 
 	case kafka.PartitionEOF:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("eof partition reached")
+		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " eof partition reached")
 		tp.eofCnt++
 		if tp.cfg.Exit.OnEof && tp.eofCnt >= tp.partitionsCnt {
 			err = io.EOF
 		}
 	case kafka.Error:
 		// Errors should generally be considered as informational, the client will try to automatically recover
-		log.Error().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("errors received")
+		log.Error().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " errors received")
 	case kafka.OffsetsCommitted:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("committed offsets")
+		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " committed offsets")
 	default:
 		break
 	}
@@ -296,19 +297,19 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 }
 
 func (tp *transformerProducerImpl) beginTransaction(warnOnRunning bool) error {
-
-	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg("begin transaction...")
+	const semLogContext = "t-prod::begin-transaction"
+	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext)
 	if !kafkalks.IsTransactionCommit(tp.cfg.CommitMode) {
 		return nil
 	}
 
 	if tp.txActive {
 		if warnOnRunning {
-			log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("transaction already running...")
+			log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " transaction already running...")
 		}
 	} else {
 		if err := tp.getProducer().BeginTransaction(); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("begin transaction error")
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " begin transaction error")
 			return err
 		} else {
 			tp.txActive = true
@@ -319,37 +320,37 @@ func (tp *transformerProducerImpl) beginTransaction(warnOnRunning bool) error {
 }
 
 func (tp *transformerProducerImpl) abortTransaction(ctx context.Context, warnOnNotRunning bool) error {
-
-	log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg("aborting transaction...")
+	const semLogContext = "t-prod::abort-transaction"
+	log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext + " aborting transaction...")
 
 	switch tp.cfg.CommitMode {
 	case kafkalks.CommitModeAuto:
 		return nil
 	case kafkalks.CommitModeManual:
-		log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("transformer-producer: no  action on aborting on manual commit...")
+		log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " no  action on aborting on manual commit...")
 
 	case kafkalks.CommitModeTransaction:
 		if tp.txActive {
 			if err := tp.getProducer().AbortTransaction(ctx); err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("abort transaction error")
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction error")
 				return err
 			}
 		} else {
 			if warnOnNotRunning {
-				log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("transaction not active")
+				log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " transaction not active")
 			}
 		}
 		tp.txActive = false
 	default:
-		log.Warn().Str("commit-mode", tp.cfg.CommitMode).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("transformer-producer: commit-mode not recognized")
+		log.Warn().Str("commit-mode", tp.cfg.CommitMode).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " commit-mode not recognized")
 	}
 
 	return nil
 }
 
 func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOnNotRunning bool) error {
-
-	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg("committing transaction...")
+	const semLogContext = "t-prod::commit-transaction"
+	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext)
 
 	switch tp.cfg.CommitMode {
 	case kafkalks.CommitModeAuto:
@@ -357,7 +358,7 @@ func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOn
 	case kafkalks.CommitModeManual:
 		_, err := tp.consumer.Commit()
 		if err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("error on commit message")
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error on commit message")
 			return err
 		}
 	case kafkalks.CommitModeTransaction:
@@ -365,42 +366,42 @@ func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOn
 
 			partitions, err := tp.consumer.Assignment()
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("consumer assignment error")
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer assignment error")
 				return err
 			}
 
 			positions, err := tp.consumer.Position(partitions)
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("consumer position error")
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer position error")
 				return err
 			}
 
 			consumerMetadata, err := tp.consumer.GetConsumerGroupMetadata()
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("consumer get group metadata")
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer get group metadata")
 				return err
 			}
 
 			//fmt.Fprintln(os.Stdout, "ConsumerMetaData: ", consumerMetadata)
 			err = tp.getProducer().SendOffsetsToTransaction(ctx, positions, consumerMetadata)
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("consumer send offset to transaction")
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer send offset to transaction")
 				return err
 			}
 
 			err = tp.getProducer().CommitTransaction(ctx)
 			tp.txActive = false
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg("consumer commit transaction")
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer commit transaction")
 				return err
 			}
 		} else {
 			if warnOnNotRunning {
-				log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg("transaction not active")
+				log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " transaction not active")
 			}
 		}
 	default:
-		log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Str("commit-mode", tp.cfg.CommitMode).Msg("transformer-producer: commit-mode not recognized")
+		log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Str("commit-mode", tp.cfg.CommitMode).Msg(semLogContext + " commit-mode not recognized")
 	}
 
 	return nil
@@ -427,8 +428,8 @@ func (tp *transformerProducerImpl) getProducer() *kafka.Producer {
 }
 
 func (tp *transformerProducerImpl) produce2Topic(m Message) error {
+	const semLogContext = "t-prod::produce-to-topic"
 
-	const semLogContext = "t-prod - produce2Topic"
 	if m.IsZero() {
 		if tp.cfg.CountTopicsByType("std") > 0 {
 			// Produce a warn only in case there are standard topics configured
@@ -492,10 +493,10 @@ func (tp *transformerProducerImpl) produce2Topic(m Message) error {
 
 func (tp *transformerProducerImpl) produceMetrics(elapsed float64, err error, data BAMData) {
 
-	const semLogContext = "produce-metrics"
+	const semLogContext = "t-prod::produce-metrics"
 	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Float64("elapsed", elapsed).Msg(semLogContext)
 
-	data.Trace()
+	// data.Trace()
 
 	tp.metrics.SetMetricValueById(TprodStdMetricMessages, 1, data.labels)
 	tp.metrics.SetMetricValueById(TprodStdMetricDuration, elapsed, data.labels)
@@ -510,7 +511,7 @@ func (tp *transformerProducerImpl) produceMetrics(elapsed float64, err error, da
 
 func (tp *transformerProducerImpl) requestSpan(spanName string, hs []kafka.Header) opentracing.Span {
 
-	const semLogContext = "requestSpan"
+	const semLogContext = "t-prod::request-span"
 
 	headers := make(map[string]string)
 	for _, header := range hs {

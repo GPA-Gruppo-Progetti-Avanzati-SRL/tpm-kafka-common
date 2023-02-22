@@ -14,10 +14,10 @@ import (
 )
 
 func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, processor TransformerProducerProcessor) (TransformerProducer, error) {
-
+	const semLogContext = "t-prod-factory::new"
 	mr, err := promutil.InitMetricsRegistry(cfg.Metrics)
 	if err != nil {
-		log.Error().Err(err).Msg("error creating metrics")
+		log.Error().Err(err).Msg(semLogContext + " error creating metrics")
 		return nil, err
 	}
 
@@ -39,7 +39,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		t.monitorQuitc = make(chan struct{})
 	}
 
-	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tick-interval", cfg.TickInterval.String()).Msg("Initializing tick interval")
+	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tick-interval", cfg.TickInterval.String()).Msg(semLogContext + " initializing tick interval")
 
 	ctx, ctxCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer ctxCancel()
@@ -55,21 +55,21 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		t.cfg.ProducerId = ""
 	case kafkalks.CommitModeTransaction:
 		if t.cfg.ProducerId == "" || len(producerBrokers) > 1 {
-			log.Warn().Str(semLogTransformerProducerId, cfg.Name).Str("producer-tx-id", t.cfg.ProducerId).Int("no-brokers", len(producerBrokers)).Msg("commit-mode " + kafkalks.CommitModeTransaction + " not compatible with missing producer-tx-id or multiple brokers.. reverting to " + kafkalks.CommitModeAuto)
+			log.Warn().Str(semLogTransformerProducerId, cfg.Name).Str("producer-tx-id", t.cfg.ProducerId).Int("no-brokers", len(producerBrokers)).Msg(semLogContext + " commit-mode " + kafkalks.CommitModeTransaction + " not compatible with missing producer-tx-id or multiple brokers.. reverting to " + kafkalks.CommitModeAuto)
 			isAutoCommit = true
 			cfg.CommitMode = kafkalks.CommitModeAuto
 		}
 	default:
-		log.Warn().Str(semLogTransformerProducerId, cfg.Name).Msg("transform producer: commit-mode not set....setting to " + kafkalks.CommitModeTransaction)
+		log.Warn().Str(semLogTransformerProducerId, cfg.Name).Msg(semLogContext + " commit-mode not set....setting to " + kafkalks.CommitModeTransaction)
 		isAutoCommit = true
 		cfg.CommitMode = kafkalks.CommitModeAuto
 	}
 
-	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tx-id", t.cfg.ProducerId).Bool("auto-commit", isAutoCommit).Msg("transform producer: setting commit params")
+	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tx-id", t.cfg.ProducerId).Bool("auto-commit", isAutoCommit).Msg(semLogContext + " transform producer: setting commit params")
 	if len(producerBrokers) > 0 {
 		t.producers = make(map[string]*kafka.Producer)
 	} else {
-		log.Warn().Msg("no output topics configured...")
+		log.Warn().Msg(semLogContext + " no output topics configured...")
 	}
 
 	for _, brokerName := range producerBrokers {

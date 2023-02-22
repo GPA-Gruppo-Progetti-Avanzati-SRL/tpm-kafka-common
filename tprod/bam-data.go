@@ -43,7 +43,7 @@ func (bd *BAMData) AddLabel(lbl, val string) {
 
 func (bd *BAMData) AddMessageHeaders(hs []kafka.Header) {
 	for _, h := range hs {
-		bd.AddLabel(h.String(), string(h.Value))
+		bd.AddLabel(h.Key, string(h.Value))
 	}
 }
 

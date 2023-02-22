@@ -10,7 +10,7 @@ import (
 type Server interface {
 	Close()
 	Start()
-	TransofmerProducerTerminated(err error)
+	TransformerProducerTerminated(err error)
 }
 
 type ServerConfig struct {
@@ -40,8 +40,9 @@ func NewServer(cfg *ServerConfig, tps []TransformerProducer, c chan error) (Serv
 }
 
 func (s *server) Close() {
+	const semLogContext = "t-prod-server::close"
 	if len(s.transformerProducer) > 0 {
-		log.Info().Msg("closing transformer producer")
+		log.Info().Msg(semLogContext + " closing transformer producer")
 		for _, tp := range s.transformerProducer {
 			tp.Close()
 		}
@@ -57,15 +58,17 @@ func (s *server) Add(tp TransformerProducer) {
 }
 
 func (s *server) Start() {
-	log.Info().Msg("starting transformer producer")
+	const semLogContext = "t-prod-server::start"
+	log.Info().Msg(semLogContext)
 	for _, tp := range s.transformerProducer {
 		tp1 := tp
 		go tp1.Start()
 	}
 }
 
-func (s *server) TransofmerProducerTerminated(err error) {
-	log.Info().Msg("transformer producer has terminated")
+func (s *server) TransformerProducerTerminated(err error) {
+	const semLogContext = "t-prod-server::producer-terminated"
+	log.Info().Msg(semLogContext)
 	if err == nil {
 		return
 	}
@@ -73,16 +76,16 @@ func (s *server) TransofmerProducerTerminated(err error) {
 	s.numberOfActiveProducers--
 
 	if s.numberOfActiveProducers == 0 {
-		log.Info().Msg("no more producers.... server not operative")
+		log.Info().Msg(semLogContext + " no more producers.... server not operative")
 		s.quitc <- errors.New("kafka consumer server not operative")
 	} else {
 		if err != io.EOF {
 			if s.cfg.Exit.OnFail {
-				log.Error().Err(err).Msg("on first transform producer error.... server shutting down")
+				log.Error().Err(err).Msg(semLogContext + " on first transform producer error.... server shutting down")
 				s.quitc <- errors.New("kafka consumer server fatal error")
 			}
 		} else if s.cfg.Exit.OnEof {
-			log.Info().Msg("on first transform producer EOF.... server shutting down")
+			log.Info().Msg(semLogContext + " on first transform producer EOF.... server shutting down")
 			s.quitc <- errors.New("kafka consumer server eof")
 		}
 	}

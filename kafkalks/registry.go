@@ -13,14 +13,14 @@ var theRegistry LinkedServices
 
 func Initialize(cfgs []Config) (LinkedServices, error) {
 
-	const semLogContext = "kafka linked-services initialization"
+	const semLogContext = "kafka-registry::initialize"
 	if len(cfgs) == 0 {
-		log.Info().Msg(semLogContext + ": no config provided....skipping")
+		log.Info().Msg(semLogContext + " no config provided....skipping")
 		return nil, nil
 	}
 
 	if len(theRegistry) != 0 {
-		log.Warn().Msg(semLogContext + ": registry already configured.. overwriting")
+		log.Warn().Msg(semLogContext + " registry already configured.. overwriting")
 	}
 
 	log.Info().Int("no-linked-services", len(cfgs)).Msg(semLogContext)
@@ -33,7 +33,7 @@ func Initialize(cfgs []Config) (LinkedServices, error) {
 		}
 
 		r = append(r, lks)
-		log.Info().Msg("kafka instance configured")
+		log.Info().Str("broker-name", kcfg.BrokerName).Msg(semLogContext + " kafka instance configured")
 
 	}
 
@@ -43,7 +43,7 @@ func Initialize(cfgs []Config) (LinkedServices, error) {
 
 func GetKafkaLinkedService(brokerName string) (*LinkedService, error) {
 
-	const semLogContext = "get kafka linked-service"
+	const semLogContext = "kafka-registry::get-lks"
 
 	log.Trace().Str("broker", brokerName).Msg(semLogContext)
 

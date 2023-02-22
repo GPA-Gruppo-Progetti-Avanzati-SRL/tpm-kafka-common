@@ -28,6 +28,7 @@ func NewKafkaServiceInstanceWithConfig(cfg Config) (*LinkedService, error) {
 }
 
 func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId string) (*kafka.Producer, error) {
+	const semLogContext = "kafka-lks::new-producer"
 
 	if lks.producer != nil {
 		return lks.producer, nil
@@ -53,7 +54,7 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SSL.SkipVerify)
 		} else {
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, false)
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg("ca-location not configured")
+			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 		}
 	case "SASL_SSL":
 		fallthrough
@@ -66,14 +67,14 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 			_ = cfgMap2.SetKey(SSLCaLocationPropertyName, lks.cfg.SASL.CaLocation)
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SASL.SkipVerify)
 		} else {
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg("ca-location not configured")
+			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, false)
 		}
 	default:
-		log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg("skipping security-protocol settings")
+		log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " skipping security-protocol settings")
 	}
 
-	logConfigMap(cfgMap2)
+	logConfigMap(semLogContext, cfgMap2)
 	producer, err := kafka.NewProducer(&cfgMap2)
 
 	if err != nil {
@@ -84,7 +85,7 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 	if transactionalId != "" {
 		err = producer.InitTransactions(ctx)
 		if err != nil {
-			log.Error().Err(err).Msg("producer initialization")
+			log.Error().Err(err).Msg(semLogContext + " producer initialization")
 			return nil, err
 		}
 	}
@@ -93,17 +94,19 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 	return producer, nil
 }
 
-func logConfigMap(m kafka.ConfigMap) {
+func logConfigMap(semLogContext string, m kafka.ConfigMap) {
 	for n, v := range m {
 		if strings.Contains(n, "username") || strings.Contains(n, "password") {
 			v = "***********"
 		}
-		log.Info().Str("property", n).Interface("value", v).Msg("kafka config map")
+		log.Info().Str("property", n).Interface("value", v).Msg(semLogContext + " kafka config map")
 	}
 }
 
 func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.Consumer, error) {
-	log.Info().Msg("kafka consumer initialization")
+
+	const semLogContext = "kafka-lks::new-consumer"
+	log.Info().Msg(semLogContext)
 
 	cfgMap := kafka.ConfigMap{
 		BootstrapServersPropertyName:             lks.cfg.BootstrapServers,
@@ -116,7 +119,7 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 	}
 
 	if lks.cfg.Consumer.EnablePartitionEOF {
-		log.Info().Msg("enabling eof partitions notifications")
+		log.Info().Msg(semLogContext + " enabling eof partitions notifications")
 		_ = cfgMap.SetKey(EnablePartitionEOFPropertyName, lks.cfg.Consumer.EnablePartitionEOF)
 	}
 
@@ -135,7 +138,7 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SSL.SkipVerify)
 		} else {
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, false)
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg("ca-location not configured")
+			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 		}
 	case "SASL_SSL":
 		fallthrough
@@ -148,11 +151,11 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 			_ = cfgMap.SetKey(SSLCaLocationPropertyName, lks.cfg.SASL.CaLocation)
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SASL.SkipVerify)
 		} else {
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg("ca-location not configured")
+			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, false)
 		}
 	default:
-		log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg("skipping security-protocol settings")
+		log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " skipping security-protocol settings")
 	}
 
 	/*
@@ -169,10 +172,10 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 		}
 	*/
 
-	logConfigMap(cfgMap)
+	logConfigMap(semLogContext, cfgMap)
 	consumer, err := kafka.NewConsumer(&cfgMap)
 	if err != nil {
-		log.Error().Err(err).Msg("consumer initialization error")
+		log.Error().Err(err).Msg(semLogContext + " consumer initialization error")
 		return nil, err
 	}
 

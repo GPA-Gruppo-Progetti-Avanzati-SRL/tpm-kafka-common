@@ -33,8 +33,8 @@ func (rwd *reworkDltImpl) SetParent(s tprod.Server) {
 
 func (rwd *reworkDltImpl) Start() {
 
-	const semLogContext = "rework dlt queue - start"
-	log.Info().Msg("starting rework loop")
+	const semLogContext = "rework-dlt::start"
+	log.Info().Msg(semLogContext + " starting rework loop")
 	ticker := time.NewTicker(rwd.cfg.TickInterval)
 
 	for {
@@ -44,25 +44,25 @@ func (rwd *reworkDltImpl) Start() {
 			if err != nil {
 				log.Error().Err(err).Msg(semLogContext)
 				ticker.Stop()
-				rwd.parent.TransofmerProducerTerminated(err)
+				rwd.parent.TransformerProducerTerminated(err)
 				return
 			}
 
 		case <-rwd.quitc:
-			log.Info().Msg("terminating worker")
+			log.Info().Msg(semLogContext + " terminating worker")
 			if rwd.worker != nil {
 				rwd.worker.Close()
 			}
 			ticker.Stop()
 			// Should I do...?
-			rwd.parent.TransofmerProducerTerminated(nil)
+			rwd.parent.TransformerProducerTerminated(nil)
 			return
 		}
 	}
 }
 
-func (rwd *reworkDltImpl) TransofmerProducerTerminated(err error) {
-	const semLogContext = "rework dlt queue - worker terminated"
+func (rwd *reworkDltImpl) TransformerProducerTerminated(err error) {
+	const semLogContext = "rework-dlt::producer-terminated"
 	rwd.worker = nil
 	if err != nil {
 		if err == io.EOF {
@@ -74,7 +74,8 @@ func (rwd *reworkDltImpl) TransofmerProducerTerminated(err error) {
 }
 
 func (rwd *reworkDltImpl) Close() {
-	log.Info().Msg("signalling shutdown transformer producer")
+	const semLogContext = "rework-dlt::close"
+	log.Info().Msg(semLogContext + " signalling shutdown transformer producer")
 
 	close(rwd.quitc)
 	if rwd.worker != nil {
@@ -83,7 +84,7 @@ func (rwd *reworkDltImpl) Close() {
 }
 
 func (rwd *reworkDltImpl) runWorker() error {
-	const semLogContext = "rework dlt queue:run worker - "
+	const semLogContext = "rework-dlt::run-worker"
 
 	if rwd.worker != nil {
 		log.Info().Msg(semLogContext + " worker is still running")

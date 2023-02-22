@@ -47,7 +47,7 @@ func NewEcho(cfg *Config, wg *sync.WaitGroup) (tprod.TransformerProducer, error)
 }
 
 func (b *echoImpl) Process(km *kafka.Message, span opentracing.Span) (tprod.Message, tprod.BAMData, error) {
-	const semLogContext = "echo-process"
+	const semLogContext = "echo-tprod::process"
 
 	bamData := tprod.BAMData{}
 	bamData.AddLabel("test_label", "test_value")
