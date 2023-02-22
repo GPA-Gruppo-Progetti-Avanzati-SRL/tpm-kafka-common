@@ -41,7 +41,7 @@ func Initialize(cfgs []Config) (LinkedServices, error) {
 	return r, nil
 }
 
-func (r LinkedServices) GetKafkaLinkedService(brokerName string) (*LinkedService, error) {
+func GetKafkaLinkedService(brokerName string) (*LinkedService, error) {
 
 	const semLogContext = "get kafka linked-service"
 
@@ -59,7 +59,7 @@ func (r LinkedServices) GetKafkaLinkedService(brokerName string) (*LinkedService
 }
 
 func NewKafkaConsumer(brokerName, gId string, autoCommit bool) (*kafka.Consumer, error) {
-	k, err := theRegistry.GetKafkaLinkedService(brokerName)
+	k, err := GetKafkaLinkedService(brokerName)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func NewKafkaConsumer(brokerName, gId string, autoCommit bool) (*kafka.Consumer,
 }
 
 func NewKafkaProducer(ctx context.Context, brokerName, tId string) (*kafka.Producer, error) {
-	k, err := theRegistry.GetKafkaLinkedService(brokerName)
+	k, err := GetKafkaLinkedService(brokerName)
 	if err != nil {
 		return nil, err
 	}
