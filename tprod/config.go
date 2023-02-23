@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+type TopicType string
+
+const (
+	TopicTypeStd        TopicType = "std"
+	TopicTypeDeadLetter TopicType = "dead-letter"
+)
+
 type ConfigExitPolicy struct {
 	OnFail    bool `yaml:"on-fail" mapstructure:"on-fail" json:"on-fail"`
 	OnEof     bool `yaml:"on-eof" mapstructure:"on-eof" json:"on-eof"`
@@ -28,10 +35,10 @@ type TransformerProducerConfig struct {
 }
 
 type ConfigTopic struct {
-	Name           string `yaml:"name" mapstructure:"name" json:"name"`
-	BrokerName     string `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
-	MaxPollTimeout int    `yaml:"max-poll-timeout" mapstructure:"max-poll-timeout" json:"max-poll-timeout"`
-	TopicType      string `yaml:"type" mapstructure:"type" json:"type"`
+	Name           string    `yaml:"name" mapstructure:"name" json:"name"`
+	BrokerName     string    `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
+	MaxPollTimeout int       `yaml:"max-poll-timeout" mapstructure:"max-poll-timeout" json:"max-poll-timeout"`
+	TopicType      TopicType `yaml:"type" mapstructure:"type" json:"type"`
 }
 
 func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
@@ -63,7 +70,7 @@ func (cfg *TransformerProducerConfig) FindTopic(n string) (int, error) {
 	return -1, fmt.Errorf("cannot find topic by name %s", n)
 }
 
-func (cfg *TransformerProducerConfig) FindTopicByType(topicType string) (int, error) {
+func (cfg *TransformerProducerConfig) FindTopicByType(topicType TopicType) (int, error) {
 	for i, p := range cfg.ToTopics {
 		if p.TopicType == topicType {
 			return i, nil
@@ -73,7 +80,7 @@ func (cfg *TransformerProducerConfig) FindTopicByType(topicType string) (int, er
 	return -1, fmt.Errorf("cannot find topic by type %s", topicType)
 }
 
-func (cfg *TransformerProducerConfig) CountTopicsByType(topicType string) int {
+func (cfg *TransformerProducerConfig) CountTopicsByType(topicType TopicType) int {
 	numTopics := 0
 	for _, p := range cfg.ToTopics {
 		if p.TopicType == topicType {

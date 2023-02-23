@@ -7,7 +7,7 @@ import (
 
 type Message struct {
 	Span      opentracing.Span
-	TopicType string
+	TopicType TopicType
 	Headers   map[string]string
 	Key       []byte
 	Body      []byte
@@ -18,7 +18,7 @@ func (m Message) IsZero() bool {
 }
 
 func (m Message) ShowInfo() {
-	log.Info().Str("type", m.TopicType).Int("value-size", len(m.Body)).Str("key", string(m.Key)).Msg("message info")
+	log.Info().Str("type", string(m.TopicType)).Int("value-size", len(m.Body)).Str("key", string(m.Key)).Msg("message info")
 	for hn, hv := range m.Headers {
 		log.Info().Str("header-name", hn).Str("header-value", hv).Msg("message header")
 	}

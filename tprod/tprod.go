@@ -443,7 +443,7 @@ func (tp *transformerProducerImpl) produce2Topic(m Message) error {
 	}
 
 	if tcfg, err := tp.cfg.FindTopicByType(m.TopicType); err != nil {
-		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Str("type", m.TopicType).Msg(semLogContext + " error in determining target topic")
+		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Str("type", string(m.TopicType)).Msg(semLogContext + " error in determining target topic")
 		return err
 	} else {
 		log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Str("topic", tp.cfg.ToTopics[tcfg].Name).Msg("producing message")
