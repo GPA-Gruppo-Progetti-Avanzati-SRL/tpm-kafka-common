@@ -553,14 +553,12 @@ func (tp *transformerProducerImpl) requestSpans(hs []kafka.Header) (opentracing.
 		span = opentracing.StartSpan(spanName)
 	}
 
-	harSpanContext, _ := hartracing.GlobalTracer().Extract("", hartracing.TextMapCarrier(headers))
-	log.Trace().Bool("har-span-from-message", harSpanContext != nil).Msg(semLogContext)
+	harSpanContext, harSpanErr := hartracing.GlobalTracer().Extract("", hartracing.TextMapCarrier(headers))
+	log.Trace().Bool("har-span-from-message", harSpanErr == nil).Msg(semLogContext)
 
 	var harSpan hartracing.Span
-	if harSpanContext != nil {
+	if harSpanErr == nil {
 		harSpan = hartracing.GlobalTracer().StartSpan(hartracing.ChildOf(harSpanContext))
-	} else {
-		harSpan = hartracing.GlobalTracer().StartSpan()
 	}
 
 	return span, harSpan
