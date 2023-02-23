@@ -1,14 +1,20 @@
 package processor
 
 import (
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
 )
 
+type TopicType string
+
+const (
+	TopicTypeStd        TopicType = "std"
+	TopicTypeDeadLetter TopicType = "dead-letter"
+)
+
 type Message struct {
 	Span      opentracing.Span
-	TopicType tprod.TopicType
+	TopicType TopicType
 	Headers   map[string]string
 	Key       []byte
 	Body      []byte
