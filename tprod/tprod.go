@@ -64,7 +64,7 @@ func (tp *transformerProducerImpl) SetParent(s Server) {
 
 func (tp *transformerProducerImpl) Start() {
 	const semLogContext = "t-prod::start"
-	log.Info().Msg(semLogContext)
+	log.Info().Int("num-t-prods", len(tp.producers)).Msg(semLogContext)
 
 	// Add to wait group
 	if tp.wg != nil {
@@ -110,7 +110,7 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
 				}
 
-				if tp.cfg.Exit.OnFail {
+				if tp.exitOnError(semLogContext, ev.TopicPartition.Error) {
 					exitFromLoop = true
 				}
 			} else {
@@ -125,6 +125,25 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 
 	close(tp.monitorQuitc)
 	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting from monitor producer events")
+}
+
+func (tp *transformerProducerImpl) exitOnError(semLogContext string, err error) bool {
+
+	if err != nil {
+		if err == io.EOF {
+			if tp.cfg.Exit.OnEof {
+				log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting on eof reached")
+				return true
+			}
+		} else {
+			if tp.cfg.Exit.OnFail {
+				log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting on error")
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (tp *transformerProducerImpl) pollLoop() {
@@ -156,13 +175,7 @@ func (tp *transformerProducerImpl) pollLoop() {
 
 		default:
 			if isMsg, err := tp.poll(); err != nil {
-				if err != io.EOF || tp.cfg.Exit.OnEof {
-					if tp.cfg.Exit.OnEof {
-						log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " poll eof reached, transform producer exiting")
-					} else {
-						log.Error().Str(semLogTransformerProducerId, tp.cfg.Name).Err(err).Msg(semLogContext + " poll error")
-					}
-
+				if tp.exitOnError(semLogContext, err) {
 					ticker.Stop()
 					tp.shutDown(err)
 				}
