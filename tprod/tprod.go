@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive/hartracing"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/processor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
@@ -28,10 +30,6 @@ type TransformerProducer interface {
 	SetParent(s Server)
 }
 
-type TransformerProducerProcessor interface {
-	Process(km *kafka.Message, span opentracing.Span) (Message, BAMData, error)
-}
-
 type transformerProducerImpl struct {
 	cfg *TransformerProducerConfig
 
@@ -51,7 +49,7 @@ type transformerProducerImpl struct {
 
 	numberOfMessages int
 	metrics          promutil.MetricRegistry
-	processor        TransformerProducerProcessor
+	processor        processor.TransformerProducerProcessor
 }
 
 const (
@@ -256,10 +254,13 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 
 		isMessage = true
 		beginOfProcessing := time.Now()
-		sysMetricInfo := BAMData{}
+		sysMetricInfo := processor.BAMData{}
 		sysMetricInfo.AddMessageHeaders(e.Headers)
-		span := tp.requestSpan("nome-span", e.Headers)
+		span, harSpan := tp.requestSpans(e.Headers)
 		defer span.Finish()
+		if harSpan != nil {
+			defer harSpan.Finish()
+		}
 
 		if err = tp.beginTransaction(false); err != nil {
 			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error beginning transaction")
@@ -267,7 +268,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 			return isMessage, err
 		}
 
-		msg, bamData, err := tp.processor.Process(e, span)
+		msg, bamData, err := tp.processor.Process(e, processor.TransformerProducerProcessorWithSpan(span), processor.TransformerProducerProcessorWithHarSpan(harSpan))
 		if err != nil {
 			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
 			_ = tp.abortTransaction(context.Background(), true)
@@ -440,7 +441,7 @@ func (tp *transformerProducerImpl) getProducer() *kafka.Producer {
 	panic(fmt.Errorf("ambiguous get of first producer out of %d", len(tp.producers)))
 }
 
-func (tp *transformerProducerImpl) produce2Topic(m Message) error {
+func (tp *transformerProducerImpl) produce2Topic(m processor.Message) error {
 	const semLogContext = "t-prod::produce-to-topic"
 
 	if m.IsZero() {
@@ -504,27 +505,38 @@ func (tp *transformerProducerImpl) produce2Topic(m Message) error {
 	return nil
 }
 
-func (tp *transformerProducerImpl) produceMetrics(elapsed float64, err error, data BAMData) {
+func (tp *transformerProducerImpl) produceMetrics(elapsed float64, err error, data processor.BAMData) {
 
 	const semLogContext = "t-prod::produce-metrics"
 	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Float64("elapsed", elapsed).Msg(semLogContext)
 
 	// data.Trace()
 
-	tp.metrics.SetMetricValueById(TprodStdMetricMessages, 1, data.labels)
-	tp.metrics.SetMetricValueById(TprodStdMetricDuration, elapsed, data.labels)
+	tp.metrics.SetMetricValueById(TprodStdMetricMessages, 1, data.Labels)
+	tp.metrics.SetMetricValueById(TprodStdMetricDuration, elapsed, data.Labels)
 	if err != nil {
-		tp.metrics.SetMetricValueById(TProdStdMetricErrors, 1, data.labels)
+		tp.metrics.SetMetricValueById(TProdStdMetricErrors, 1, data.Labels)
 	}
 	for _, md := range data.MetricsData {
-		_ = tp.metrics.SetMetricValueById(md.metricId, md.value, data.labels)
+		_ = tp.metrics.SetMetricValueById(md.MetricId, md.Value, data.Labels)
 	}
 
 }
 
-func (tp *transformerProducerImpl) requestSpan(spanName string, hs []kafka.Header) opentracing.Span {
+func (tp *transformerProducerImpl) requestSpans(hs []kafka.Header) (opentracing.Span, hartracing.Span) {
 
 	const semLogContext = "t-prod::request-span"
+
+	spanName := tp.cfg.Tracing.SpanName
+
+	if spanName == "" {
+		spanName = tp.cfg.Name
+	}
+
+	if spanName == "" {
+		spanName = "not-assigned"
+		log.Warn().Msgf(semLogContext+" span name cannot be assigned...defaulting to '%s'", spanName)
+	}
 
 	headers := make(map[string]string)
 	for _, header := range hs {
@@ -541,5 +553,15 @@ func (tp *transformerProducerImpl) requestSpan(spanName string, hs []kafka.Heade
 		span = opentracing.StartSpan(spanName)
 	}
 
-	return span
+	harSpanContext, _ := hartracing.GlobalTracer().Extract("", hartracing.TextMapCarrier(headers))
+	log.Trace().Bool("har-span-from-message", harSpanContext != nil).Msg(semLogContext)
+
+	var harSpan hartracing.Span
+	if harSpanContext != nil {
+		harSpan = hartracing.GlobalTracer().StartSpan(hartracing.ChildOf(harSpanContext))
+	} else {
+		harSpan = hartracing.GlobalTracer().StartSpan()
+	}
+
+	return span, harSpan
 }

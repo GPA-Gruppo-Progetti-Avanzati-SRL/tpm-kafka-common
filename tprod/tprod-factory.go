@@ -5,6 +5,7 @@ import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/processor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/rs/zerolog/log"
 	"sync"
@@ -13,7 +14,7 @@ import (
 	"time"
 )
 
-func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, processor TransformerProducerProcessor) (TransformerProducer, error) {
+func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, processor processor.TransformerProducerProcessor) (TransformerProducer, error) {
 	const semLogContext = "t-prod-factory::new"
 	mr, err := promutil.InitMetricsRegistry(cfg.Metrics)
 	if err != nil {

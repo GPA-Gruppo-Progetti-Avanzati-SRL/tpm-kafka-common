@@ -3,8 +3,8 @@ package echo
 import (
 	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/processor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
 	"sync"
 )
@@ -46,17 +46,22 @@ func NewEcho(cfg *Config, wg *sync.WaitGroup) (tprod.TransformerProducer, error)
 	return &b, err
 }
 
-func (b *echoImpl) Process(km *kafka.Message, span opentracing.Span) (tprod.Message, tprod.BAMData, error) {
+func (b *echoImpl) Process(km *kafka.Message, opts ...processor.TransformerProducerProcessorOption) (processor.Message, processor.BAMData, error) {
 	const semLogContext = "echo-tprod::process"
 
-	bamData := tprod.BAMData{}
+	tprodOpts := processor.TransformerProducerOptions{}
+	for _, o := range opts {
+		o(&tprodOpts)
+	}
+
+	bamData := processor.BAMData{}
 	bamData.AddLabel("test_label", "test_value")
 
-	req, err := newRequestIn(km, span)
+	req, err := newRequestIn(km, tprodOpts.Span)
 
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext + " deadletter message not resubmittable.... need a terminal dlt?")
-		return tprod.Message{}, bamData, err
+		return processor.Message{}, bamData, err
 	}
 
 	if b.cfg.ProcessorConfig.NumRetries >= 0 {
@@ -67,13 +72,13 @@ func (b *echoImpl) Process(km *kafka.Message, span opentracing.Span) (tprod.Mess
 		numberOfAttempts := req.GetNumberOfAttempts(b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName)
 		if numberOfAttempts > b.cfg.ProcessorConfig.NumRetries {
 			log.Error().Int("number-of-attempts", numberOfAttempts).Int("num-retries", b.cfg.ProcessorConfig.NumRetries).Msg(semLogContext + " reached max number of retries")
-			return tprod.Message{}, bamData, nil
+			return processor.Message{}, bamData, nil
 		}
 
 		req.Headers[b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName] = fmt.Sprint(numberOfAttempts + 1)
 	}
 
-	return tprod.Message{
+	return processor.Message{
 		Span:      req.Span,
 		TopicType: "std",
 		Headers:   req.Headers,

@@ -21,6 +21,10 @@ type ConfigExitPolicy struct {
 	EofAfterN int  `yaml:"eof-after-n,omitempty" mapstructure:"eof-after-n,omitempty" json:"eof-after-n,omitempty"`
 }
 
+type TracingCfg struct {
+	SpanName string `yaml:"span-name" mapstructure:"span-name" json:"span-name"`
+}
+
 type TransformerProducerConfig struct {
 	Name         string                 `yaml:"name" mapstructure:"name" json:"name"`
 	TickInterval time.Duration          `yaml:"tick-interval" mapstructure:"tick-interval" json:"tick-interval"`
@@ -32,6 +36,7 @@ type TransformerProducerConfig struct {
 	BrokerName   string                 `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
 	FromTopic    ConfigTopic            `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
 	ToTopics     []ConfigTopic          `yaml:"to-topics" mapstructure:"to-topics" json:"to-topics"`
+	Tracing      TracingCfg             `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
 }
 
 type ConfigTopic struct {
