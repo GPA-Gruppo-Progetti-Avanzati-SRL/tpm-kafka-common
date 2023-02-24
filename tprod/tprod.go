@@ -472,6 +472,14 @@ func (tp *transformerProducerImpl) produce2Topic(m processor.Message) error {
 			log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message trace has not been set")
 		}
 
+		if m.HarSpan != nil {
+			hartracing.GlobalTracer().Inject(
+				m.HarSpan.Context(),
+				hartracing.TextMapCarrier(headers))
+		} else {
+			log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message har-trace has not been set")
+		}
+
 		for headerKey, headerValue := range m.Headers {
 			headers[headerKey] = headerValue
 		}

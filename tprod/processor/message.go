@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive/hartracing"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
 )
@@ -13,6 +14,7 @@ const (
 )
 
 type Message struct {
+	HarSpan   hartracing.Span
 	Span      opentracing.Span
 	TopicType TopicType
 	Headers   map[string]string
