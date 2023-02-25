@@ -42,6 +42,7 @@ type ConfigTopic struct {
 
 func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
 
+	const semLogContext = "t-prod-config::count-distinct-brokers"
 	m := make(map[string]struct{})
 	for _, t := range cfg.ToTopics {
 		n := util.Coalesce(t.BrokerName, cfg.BrokerName)
@@ -50,7 +51,7 @@ func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
 		}
 	}
 
-	log.Info().Int("no-producers", len(m)).Msg("count-distinct-producer-brokers")
+	log.Info().Int("no-producers", len(m)).Msg(semLogContext)
 
 	var brokerList []string
 	for n, _ := range m {
