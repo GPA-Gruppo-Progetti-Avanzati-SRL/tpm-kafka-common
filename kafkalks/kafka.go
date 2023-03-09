@@ -39,6 +39,10 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		AcksPropertyName:             lks.cfg.Producer.Acks,
 	}
 
+	if lks.cfg.Producer.DeliveryTimeout != 0 {
+		_ = cfgMap2.SetKey(DeliveryTimeoutMs, int(lks.cfg.Producer.DeliveryTimeout.Milliseconds()))
+	}
+
 	if transactionalId != "" {
 		_ = cfgMap2.SetKey(TransactionalIdPropertyName, transactionalId)
 		_ = cfgMap2.SetKey(TransactionalTimeoutMsPropertyName, lks.cfg.Producer.MaxTimeoutMs)

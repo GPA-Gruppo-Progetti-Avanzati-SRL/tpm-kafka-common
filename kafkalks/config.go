@@ -3,6 +3,7 @@ package kafkalks
 import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/rs/zerolog/log"
+	"time"
 )
 
 const (
@@ -23,6 +24,7 @@ const (
 	SessionTimeOutMsPropertyName                 = "session.timeout.ms"
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
+	DeliveryTimeoutMs                            = "delivery.timeout.ms"
 
 	CommitModeAuto        = "auto"
 	CommitModeManual      = "manual"
@@ -44,8 +46,9 @@ type ConsumerConfig struct {
 
 type ProducerConfig struct {
 	// Producer related configs
-	Acks         string `mapstructure:"acks" json:"acks" yaml:"acks"`
-	MaxTimeoutMs int    `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
+	Acks            string        `mapstructure:"acks" json:"acks" yaml:"acks"`
+	MaxTimeoutMs    int           `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
+	DeliveryTimeout time.Duration `mapstructure:"delivery-timeout"`
 }
 
 type SSLCfg struct {
