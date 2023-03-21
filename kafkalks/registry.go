@@ -47,7 +47,6 @@ func Close() {
 	for _, lks := range theRegistry {
 		lks.Close()
 	}
-	log.Info().Msg(semLogContext)
 }
 
 func GetKafkaLinkedService(brokerName string) (*LinkedService, error) {
