@@ -304,5 +304,5 @@ func (shaProd *SharedProducer) Produce2Topic(topicName string, k, msg []byte, hd
 		return ProducerResponse{Status: http.StatusServiceUnavailable, BrokerName: shaProd.brokerName, Error: err.Error(), Topic: topicName}
 	}
 
-	return ProducerResponse{Status: http.StatusAccepted, BrokerName: shaProd.brokerName, Error: err.Error(), Topic: topicName}
+	return ProducerResponse{Status: http.StatusAccepted, BrokerName: shaProd.brokerName, Topic: topicName}
 }
