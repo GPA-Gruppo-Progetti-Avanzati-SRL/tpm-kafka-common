@@ -254,20 +254,19 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 type ProducerResponse struct {
 	BrokerName string       `mapstructure:"broker-name,omitempty" json:"broker-name,omitempty" yaml:"broker-name,omitempty"`
 	Topic      string       `mapstructure:"topic,omitempty" json:"topic,omitempty" yaml:"topic,omitempty"`
-	Status     int          `mapstructure:"status,omitempty" json:"status,omitempty" yaml:"status,omitempty"`
 	Error      string       `mapstructure:"error,omitempty" json:"error,omitempty" yaml:"error,omitempty"`
 	Offset     kafka.Offset `mapstructure:"offset,omitempty" json:"offset,omitempty" yaml:"offset,omitempty"`
 	Partition  int32        `mapstructure:"partition,omitempty" json:"partition,omitempty" yaml:"partition,omitempty"`
 }
 
-func (shaProd *SharedProducer) Produce2Topic(topicName string, k, msg []byte, hdrs map[string]string, span opentracing.Span) ProducerResponse {
+func (shaProd *SharedProducer) Produce2Topic(topicName string, k, msg []byte, hdrs map[string]string, span opentracing.Span) (int, ProducerResponse) {
 	const semLogContext = "kafka-lks::produce-2-topic"
 	log.Trace().Str("broker", shaProd.brokerName).Str("topic", topicName).Msg(semLogContext)
 
 	var err error
 	if shaProd.producer == nil {
 		err = errors.New("producer is nil")
-		return ProducerResponse{Status: http.StatusInternalServerError, BrokerName: shaProd.brokerName, Error: err.Error(), Topic: topicName}
+		return http.StatusInternalServerError, ProducerResponse{BrokerName: shaProd.brokerName, Error: err.Error(), Topic: topicName}
 	}
 
 	km := &kafka.Message{
@@ -301,8 +300,8 @@ func (shaProd *SharedProducer) Produce2Topic(topicName string, k, msg []byte, hd
 
 	if err := shaProd.producer.Produce(km, nil); err != nil {
 		log.Error().Err(err).Msg(semLogContext + " errors in producing message")
-		return ProducerResponse{Status: http.StatusServiceUnavailable, BrokerName: shaProd.brokerName, Error: err.Error(), Topic: topicName}
+		return http.StatusServiceUnavailable, ProducerResponse{BrokerName: shaProd.brokerName, Error: err.Error(), Topic: topicName}
 	}
 
-	return ProducerResponse{Status: http.StatusAccepted, BrokerName: shaProd.brokerName, Topic: topicName}
+	return http.StatusAccepted, ProducerResponse{BrokerName: shaProd.brokerName, Topic: topicName}
 }
