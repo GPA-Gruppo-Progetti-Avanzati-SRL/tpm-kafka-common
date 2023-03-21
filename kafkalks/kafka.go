@@ -2,10 +2,12 @@ package kafkalks
 
 import (
 	"context"
+	"errors"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
 	"strings"
+	"sync"
 )
 
 /*
@@ -13,26 +15,48 @@ import (
  * May be I need to name producers and if don't just create a new one...?
  */
 
+type SharedProducer struct {
+	brokerName string
+	producer   *kafka.Producer
+	mu         sync.Mutex
+}
+
 type LinkedService struct {
-	cfg      Config
-	producer *kafka.Producer
+	cfg            Config
+	sharedProducer SharedProducer
 }
 
 func (lks *LinkedService) Name() string {
 	return lks.cfg.BrokerName
 }
 
+func (lks *LinkedService) Close() {
+
+	const semLogContext = "kafka-lks::close"
+	if lks.sharedProducer.producer != nil {
+		timeoutMs := 1000
+		if lks.cfg.Producer.FlushTimeout == 0 {
+			timeoutMs = int(lks.cfg.Producer.FlushTimeout.Milliseconds())
+		}
+
+		log.Info().Int("timeout-ms", timeoutMs).Str("broker-name", lks.cfg.BrokerName).Msg(semLogContext + " closing shared producer")
+		unf := lks.sharedProducer.producer.Flush(timeoutMs)
+		for unf > 0 {
+			log.Info().Int("timeout-ms", timeoutMs).Int("out-standing", unf).Msg(semLogContext + " outstanding events")
+		}
+		lks.sharedProducer.producer.Close()
+		lks.sharedProducer.producer = nil
+	}
+
+}
+
 func NewKafkaServiceInstanceWithConfig(cfg Config) (*LinkedService, error) {
-	lks := LinkedService{cfg: cfg}
+	lks := LinkedService{cfg: cfg, sharedProducer: SharedProducer{brokerName: cfg.BrokerName}}
 	return &lks, nil
 }
 
 func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId string) (*kafka.Producer, error) {
 	const semLogContext = "kafka-lks::new-producer"
-
-	if lks.producer != nil {
-		return lks.producer, nil
-	}
 
 	cfgMap2 := kafka.ConfigMap{
 		BootstrapServersPropertyName: lks.cfg.BootstrapServers,
@@ -94,7 +118,6 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		}
 	}
 
-	//lks.producer = producer
 	return producer, nil
 }
 
@@ -186,17 +209,55 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 	return consumer, nil
 }
 
-// Produce2Topic uses an internal producer out of any transaction and keep it in the linkedService for further processing.
-func (lks *LinkedService) Produce2TopicToBeRevisedBecauseOfSingleton(topicName string, k, msg []byte, hdrs map[string]string, span opentracing.Span) error {
+/*
+ * SharedProducer
+ */
 
-	log.Trace().Str("broker", lks.cfg.BrokerName).Str("topic", topicName).Msg("producing message")
+func (lks *LinkedService) NewSharedProducer(ctx context.Context, synchDelivery bool) (SharedProducer, error) {
+	const semLogContext = "kafka-lks::new-sha-producer"
 
 	var err error
-	if lks.producer == nil {
-		lks.producer, err = lks.NewProducer(context.Background(), "")
-		if err != nil {
-			return err
+	lks.sharedProducer.mu.Lock()
+	if lks.sharedProducer.producer == nil {
+		lks.sharedProducer.producer, err = lks.NewProducer(ctx, "")
+		go lks.monitorSharedProducerAsyncEvents(lks.sharedProducer.producer)
+	}
+	lks.sharedProducer.mu.Unlock()
+	return lks.sharedProducer, err
+}
+
+func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Producer) {
+	const semLogContext = "kafka-lks::monitor-sha-producer"
+	log.Info().Msg(semLogContext + " starting monitor producer events")
+
+	exitFromLoop := false
+	for e := range producer.Events() {
+
+		switch ev := e.(type) {
+		case *kafka.Message:
+			if ev.TopicPartition.Error != nil {
+				log.Info().Interface("event", ev).Msg(semLogContext + " delivery failed")
+			} else {
+				log.Trace().Interface("partition", ev.TopicPartition).Msg(semLogContext + " delivered message")
+			}
 		}
+
+		if exitFromLoop {
+			break
+		}
+	}
+
+	log.Info().Msg(semLogContext + " exiting from monitor producer events")
+}
+
+func (shaProd *SharedProducer) Produce2Topic(topicName string, k, msg []byte, hdrs map[string]string, span opentracing.Span) error {
+	const semLogContext = "kafka-lks::produce-2-topic"
+	log.Trace().Str("broker", shaProd.brokerName).Str("topic", topicName).Msg(semLogContext)
+
+	var err error
+	if shaProd.producer == nil {
+		err = errors.New("producer is nil")
+		return err
 	}
 
 	km := &kafka.Message{
@@ -208,27 +269,28 @@ func (lks *LinkedService) Produce2TopicToBeRevisedBecauseOfSingleton(topicName s
 	var headers map[string]string
 	if span != nil || len(hdrs) > 0 {
 		headers = make(map[string]string)
+
+		if span != nil {
+			opentracing.GlobalTracer().Inject(
+				span.Context(),
+				opentracing.TextMap,
+				opentracing.TextMapCarrier(headers))
+		}
+
+		for headerKey, headerValue := range hdrs {
+			headers[headerKey] = headerValue
+		}
+
+		for headerKey, headerValue := range headers {
+			km.Headers = append(km.Headers, kafka.Header{
+				Key:   headerKey,
+				Value: []byte(headerValue),
+			})
+		}
 	}
 
-	if span != nil {
-		opentracing.GlobalTracer().Inject(
-			span.Context(),
-			opentracing.TextMap,
-			opentracing.TextMapCarrier(headers))
-	}
-	for headerKey, headerValue := range hdrs {
-		headers[headerKey] = headerValue
-	}
-
-	for headerKey, headerValue := range headers {
-		km.Headers = append(km.Headers, kafka.Header{
-			Key:   headerKey,
-			Value: []byte(headerValue),
-		})
-	}
-
-	if err := lks.producer.Produce(km, nil); err != nil {
-		log.Error().Err(err).Msg("errors in producing message")
+	if err := shaProd.producer.Produce(km, nil); err != nil {
+		log.Error().Err(err).Msg(semLogContext + " errors in producing message")
 		return err
 	}
 

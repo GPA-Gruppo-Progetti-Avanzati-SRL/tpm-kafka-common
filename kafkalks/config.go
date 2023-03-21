@@ -49,6 +49,7 @@ type ProducerConfig struct {
 	Acks            string        `mapstructure:"acks" json:"acks" yaml:"acks"`
 	MaxTimeoutMs    int           `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
 	DeliveryTimeout time.Duration `mapstructure:"delivery-timeout"`
+	FlushTimeout    time.Duration `mapstructure:"flush-timeout"`
 }
 
 type SSLCfg struct {

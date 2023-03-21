@@ -41,6 +41,15 @@ func Initialize(cfgs []Config) (LinkedServices, error) {
 	return r, nil
 }
 
+func Close() {
+	const semLogContext = "kafka-registry::close"
+	log.Info().Msg(semLogContext)
+	for _, lks := range theRegistry {
+		lks.Close()
+	}
+	log.Info().Msg(semLogContext)
+}
+
 func GetKafkaLinkedService(brokerName string) (*LinkedService, error) {
 
 	const semLogContext = "kafka-registry::get-lks"
