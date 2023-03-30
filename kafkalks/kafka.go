@@ -245,6 +245,8 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 			} else {
 				log.Trace().Interface("partition", ev.TopicPartition).Msg(semLogContext + " delivered message")
 			}
+		case *kafka.Error:
+			log.Error().Interface("event", ev).Msg(semLogContext)
 		}
 
 		if exitFromLoop {
