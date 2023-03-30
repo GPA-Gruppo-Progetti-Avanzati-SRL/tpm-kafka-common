@@ -2,7 +2,7 @@ package kafkahartracer_test
 
 import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive/har"
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-kafka-har/kafkahartracer"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkahartracer"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
 	"github.com/stretchr/testify/require"
 	"testing"
