@@ -37,6 +37,8 @@ github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.63 h1:sLV95f5/vW6bqm
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.63/go.mod h1:hbtm3YCpUtxlUitYymlOI35mara7CLVX+Ukyh+BuA3o=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.76 h1:EgCWy0XTcxut6DtV2jVm6ZUvmS84gRfr2IonqlrSKgs=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.76/go.mod h1:WZLFgy+qbyanFBP25v+0WVvcqgYJHCeqsRmVSWXMC2o=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.88 h1:H3XpwMxt6i2fhFMNtM1npH0x9N6ePpkKqREGShopXsk=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.88/go.mod h1:WZLFgy+qbyanFBP25v+0WVvcqgYJHCeqsRmVSWXMC2o=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.7 h1:EZzkvpHjP7bwbjNweWF79Pj3L5mZ+AAAC/RMa0VYIis=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.7/go.mod h1:88tO3akDoeM6hmHzMJESdEjM4XdvjO8cuXNf9LR4AxM=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.13 h1:QsyeTOD+hR/QH/3Hq1JA7EsapfNIYCC1JWjf5Nn7Z+8=
