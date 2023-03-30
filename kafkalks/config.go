@@ -25,6 +25,7 @@ const (
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
 	DeliveryTimeoutMs                            = "delivery.timeout.ms"
+	MessageSendMaxRetries                        = "message.send.max.retries"
 
 	CommitModeAuto        = "auto"
 	CommitModeManual      = "manual"
@@ -46,10 +47,11 @@ type ConsumerConfig struct {
 
 type ProducerConfig struct {
 	// Producer related configs
-	Acks            string        `mapstructure:"acks" json:"acks" yaml:"acks"`
-	MaxTimeoutMs    int           `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
-	DeliveryTimeout time.Duration `mapstructure:"delivery-timeout"`
-	FlushTimeout    time.Duration `mapstructure:"flush-timeout"`
+	Acks                  string        `mapstructure:"acks" json:"acks" yaml:"acks"`
+	MaxTimeoutMs          int           `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
+	DeliveryTimeout       time.Duration `mapstructure:"delivery-timeout"`
+	FlushTimeout          time.Duration `mapstructure:"flush-timeout"`
+	MessageSendMaxRetries int           `mapstructure:"max-retries"`
 }
 
 type SSLCfg struct {

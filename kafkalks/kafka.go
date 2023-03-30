@@ -68,6 +68,10 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		_ = cfgMap2.SetKey(DeliveryTimeoutMs, int(lks.cfg.Producer.DeliveryTimeout.Milliseconds()))
 	}
 
+	if lks.cfg.Producer.MessageSendMaxRetries > 0 {
+		_ = cfgMap2.SetKey(MessageSendMaxRetries, lks.cfg.Producer.MessageSendMaxRetries)
+	}
+
 	if transactionalId != "" {
 		_ = cfgMap2.SetKey(TransactionalIdPropertyName, transactionalId)
 		_ = cfgMap2.SetKey(TransactionalTimeoutMsPropertyName, lks.cfg.Producer.MaxTimeoutMs)
@@ -237,7 +241,7 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
-				log.Info().Interface("event", ev).Msg(semLogContext + " delivery failed")
+				log.Error().Interface("event", ev).Msg(semLogContext + " delivery failed")
 			} else {
 				log.Trace().Interface("partition", ev.TopicPartition).Msg(semLogContext + " delivered message")
 			}
