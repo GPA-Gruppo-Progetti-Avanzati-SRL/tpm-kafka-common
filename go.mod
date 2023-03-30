@@ -8,7 +8,6 @@ require (
 	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-az-common v0.0.33
 	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.88
 	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.14
-	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-kafka-har v0.0.14
 	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/rs/zerolog v1.29.0
