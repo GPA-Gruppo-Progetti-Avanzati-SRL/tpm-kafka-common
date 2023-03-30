@@ -64,15 +64,15 @@ func TestMain(m *testing.M) {
 				OnEof:     true,
 				EofAfterN: 0,
 			},
-			Metrics: promutil.MetricsConfig{
+			Metrics: promutil.GroupConfig{
 				Namespace: "kafkalks",
 				Subsystem: "echotest",
-				Collectors: []promutil.MetricConfig{
+				Collectors: []promutil.Config{
 					{
 						Id:   "_errors",
 						Name: "errors",
 						Help: "numero errori",
-						Labels: []promutil.LabelInfo{
+						Labels: []promutil.LabelConfig{
 							{
 								Name:         "ce_dataset",
 								DefaultValue: "DS-NA",
@@ -85,7 +85,7 @@ func TestMain(m *testing.M) {
 						Id:   "_messages",
 						Name: "messages",
 						Help: "numero messaggi",
-						Labels: []promutil.LabelInfo{
+						Labels: []promutil.LabelConfig{
 							{
 								Name:         "ce_dataset",
 								DefaultValue: "DS-NA",
@@ -98,7 +98,7 @@ func TestMain(m *testing.M) {
 						Id:   "_messages_to_topic",
 						Name: "messages_to_topic",
 						Help: "numero messaggi prodotti su topic",
-						Labels: []promutil.LabelInfo{
+						Labels: []promutil.LabelConfig{
 							{
 								Name:         "topic",
 								DefaultValue: "NA",
@@ -115,7 +115,7 @@ func TestMain(m *testing.M) {
 						Id:   "_duration",
 						Name: "duration",
 						Help: "durata lavorazione",
-						Labels: []promutil.LabelInfo{
+						Labels: []promutil.LabelConfig{
 							{
 								Name:         "ce_dataset",
 								DefaultValue: "DS-NA",

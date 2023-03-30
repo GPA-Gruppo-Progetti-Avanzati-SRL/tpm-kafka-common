@@ -48,7 +48,7 @@ type transformerProducerImpl struct {
 	eofCnt        int
 
 	numberOfMessages int
-	metrics          promutil.MetricRegistry
+	metrics          promutil.Group
 	processor        processor.TransformerProducerProcessor
 }
 

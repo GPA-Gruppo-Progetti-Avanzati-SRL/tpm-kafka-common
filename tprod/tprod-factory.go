@@ -16,7 +16,7 @@ import (
 
 func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, processor processor.TransformerProducerProcessor) (TransformerProducer, error) {
 	const semLogContext = "t-prod-factory::new"
-	mr, err := promutil.InitMetricsRegistry(cfg.Metrics)
+	mr, err := promutil.InitGroup(cfg.Metrics)
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext + " error creating metrics")
 		return nil, err
