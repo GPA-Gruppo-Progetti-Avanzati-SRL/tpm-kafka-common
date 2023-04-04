@@ -20,17 +20,17 @@ type TracingCfg struct {
 }
 
 type TransformerProducerConfig struct {
-	Name         string               `yaml:"name" mapstructure:"name" json:"name"`
-	TickInterval time.Duration        `yaml:"tick-interval" mapstructure:"tick-interval" json:"tick-interval"`
-	Exit         ConfigExitPolicy     `yaml:"exit" mapstructure:"exit" json:"exit"`
-	Metrics      promutil.GroupConfig `yaml:"metrics" mapstructure:"metrics" json:"metrics"`
-	CommitMode   string               `yaml:"commit-mode" mapstructure:"commit-mode" json:"commit-mode"`
-	GroupId      string               `yaml:"consumer-group-id" mapstructure:"consumer-group-id" json:"consumer-group-id"`
-	ProducerId   string               `yaml:"producer-tx-id" mapstructure:"producer-tx-id" json:"producer-tx-id"`
-	BrokerName   string               `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
-	FromTopic    ConfigTopic          `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
-	ToTopics     []ConfigTopic        `yaml:"to-topics" mapstructure:"to-topics" json:"to-topics"`
-	Tracing      TracingCfg           `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
+	Name         string                     `yaml:"name" mapstructure:"name" json:"name"`
+	TickInterval time.Duration              `yaml:"tick-interval" mapstructure:"tick-interval" json:"tick-interval"`
+	Exit         ConfigExitPolicy           `yaml:"exit" mapstructure:"exit" json:"exit"`
+	Metrics      promutil.MetricGroupConfig `yaml:"metrics" mapstructure:"metrics" json:"metrics"`
+	CommitMode   string                     `yaml:"commit-mode" mapstructure:"commit-mode" json:"commit-mode"`
+	GroupId      string                     `yaml:"consumer-group-id" mapstructure:"consumer-group-id" json:"consumer-group-id"`
+	ProducerId   string                     `yaml:"producer-tx-id" mapstructure:"producer-tx-id" json:"producer-tx-id"`
+	BrokerName   string                     `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
+	FromTopic    ConfigTopic                `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
+	ToTopics     []ConfigTopic              `yaml:"to-topics" mapstructure:"to-topics" json:"to-topics"`
+	Tracing      TracingCfg                 `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
 }
 
 type ConfigTopic struct {
