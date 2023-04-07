@@ -87,7 +87,7 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SSL.SkipVerify)
 		} else {
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, false)
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
+			log.Info().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 		}
 	case "SASL_SSL":
 		fallthrough
@@ -100,7 +100,7 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 			_ = cfgMap2.SetKey(SSLCaLocationPropertyName, lks.cfg.SASL.CaLocation)
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SASL.SkipVerify)
 		} else {
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
+			log.Info().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 			_ = cfgMap2.SetKey(EnableSSLCertificateVerificationPropertyName, false)
 		}
 	default:
@@ -170,7 +170,7 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SSL.SkipVerify)
 		} else {
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, false)
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
+			log.Info().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 		}
 	case "SASL_SSL":
 		fallthrough
@@ -183,7 +183,7 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 			_ = cfgMap.SetKey(SSLCaLocationPropertyName, lks.cfg.SASL.CaLocation)
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, !lks.cfg.SASL.SkipVerify)
 		} else {
-			log.Error().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
+			log.Info().Str(SecurityProtocolPropertyName, lks.cfg.SecurityProtocol).Msg(semLogContext + " ca-location not configured")
 			_ = cfgMap.SetKey(EnableSSLCertificateVerificationPropertyName, false)
 		}
 	default:
