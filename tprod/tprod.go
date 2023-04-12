@@ -447,7 +447,7 @@ func (tp *transformerProducerImpl) produce2Topic(m processor.Message) error {
 	if m.IsZero() {
 		if tp.cfg.CountTopicsByType("std") > 0 {
 			// Produce a warn only in case there are standard topics configured
-			log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message empty no output provided")
+			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message empty no output provided")
 		}
 		return nil
 	}

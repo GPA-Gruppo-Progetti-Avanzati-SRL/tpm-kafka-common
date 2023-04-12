@@ -56,7 +56,7 @@ type ProducerConfig struct {
 
 type SSLCfg struct {
 	CaLocation string `mapstructure:"ca-location" json:"ca-location" yaml:"ca-location"`
-	SkipVerify bool   `json:"skip-verify" yaml:"skip-verify" mapstructure:"skip-verify"`
+	SkipVerify bool   `json:"skv,omitempty" yaml:"skv,omitempty" mapstructure:"skv,omitempty"`
 }
 
 type SaslCfg struct {
@@ -64,7 +64,7 @@ type SaslCfg struct {
 	Username   string `mapstructure:"username" json:"username" yaml:"username"`
 	Password   string `mapstructure:"password" json:"password" yaml:"password"`
 	CaLocation string `json:"ca-location" mapstructure:"ca-location" yaml:"ca-location"`
-	SkipVerify bool   `json:"skip-verify" mapstructure:"skip-verify" yaml:"skip-verify"`
+	SkipVerify bool   `json:"skv,omitempty" mapstructure:"skv,omitempty" yaml:"skv,omitempty"`
 }
 
 type Config struct {
