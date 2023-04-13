@@ -2,6 +2,7 @@ package kafkalks
 
 import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/rs/zerolog/log"
 	"time"
 )
@@ -47,11 +48,19 @@ type ConsumerConfig struct {
 
 type ProducerConfig struct {
 	// Producer related configs
-	Acks                  string        `mapstructure:"acks" json:"acks" yaml:"acks"`
-	MaxTimeoutMs          int           `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
-	DeliveryTimeout       time.Duration `mapstructure:"delivery-timeout"`
-	FlushTimeout          time.Duration `mapstructure:"flush-timeout"`
-	MessageSendMaxRetries int           `mapstructure:"max-retries"`
+	Acks                  string                          `mapstructure:"acks" json:"acks" yaml:"acks"`
+	MaxTimeoutMs          int                             `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
+	DeliveryTimeout       time.Duration                   `mapstructure:"delivery-timeout"`
+	FlushTimeout          time.Duration                   `mapstructure:"flush-timeout"`
+	MessageSendMaxRetries int                             `mapstructure:"max-retries"`
+	AsyncDeliveryMetrics  promutil.MetricsConfigReference `mapstructure:"async-delivery-metrics,omitempty" yaml:"async-delivery-metrics,omitempty" json:"async-delivery-metrics,omitempty"`
+}
+
+var DefaultProducerMetrics = promutil.MetricsConfigReference{
+	GId:         "-",
+	CounterId:   "-",
+	HistogramId: "-",
+	GaugeId:     "-",
 }
 
 type SSLCfg struct {

@@ -3,8 +3,10 @@ package kafkalks
 import (
 	"context"
 	"errors"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"strings"
@@ -19,11 +21,11 @@ import (
 type SharedProducer struct {
 	brokerName string
 	producer   *kafka.Producer
-	mu         sync.Mutex
 }
 
 type LinkedService struct {
 	cfg            Config
+	mu             sync.Mutex
 	sharedProducer SharedProducer
 }
 
@@ -52,6 +54,9 @@ func (lks *LinkedService) Close() {
 }
 
 func NewKafkaServiceInstanceWithConfig(cfg Config) (*LinkedService, error) {
+
+	// Initialize the metrics of the producer. These metrics are used at the moment by the shared producer in the monitor produced events.
+	cfg.Producer.AsyncDeliveryMetrics = promutil.CoalesceMetricsConfig(cfg.Producer.AsyncDeliveryMetrics, DefaultProducerMetrics)
 	lks := LinkedService{cfg: cfg, sharedProducer: SharedProducer{brokerName: cfg.BrokerName}}
 	return &lks, nil
 }
@@ -222,39 +227,92 @@ func (lks *LinkedService) NewSharedProducer(ctx context.Context, synchDelivery b
 	const semLogContext = "kafka-lks::new-sha-producer"
 
 	var err error
-	lks.sharedProducer.mu.Lock()
+	lks.mu.Lock()
+	defer lks.mu.Unlock()
+
 	if lks.sharedProducer.producer == nil {
 		lks.sharedProducer.producer, err = lks.NewProducer(ctx, "")
 		go lks.monitorSharedProducerAsyncEvents(lks.sharedProducer.producer)
 	}
-	lks.sharedProducer.mu.Unlock()
+
 	return lks.sharedProducer, err
 }
+
+const (
+	MetricIdStatusCode = "status-code"
+	MetricIdBrokerName = "broker-name"
+	MetricIdTopicName  = "topic-name"
+	MetricIdErrorCode  = "error-code"
+)
 
 func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Producer) {
 	const semLogContext = "kafka-lks::monitor-sha-producer"
 	log.Info().Msg(semLogContext + " starting monitor producer events")
 
-	exitFromLoop := false
+	// Not used at the moment
+	// exitFromLoop := false
+
+	metricLabels := prometheus.Labels{
+		MetricIdStatusCode: "500",
+		MetricIdBrokerName: lks.cfg.BrokerName,
+	}
+
 	for e := range producer.Events() {
 
 		switch ev := e.(type) {
 		case *kafka.Message:
+			if ev.TopicPartition.Topic != nil {
+				metricLabels[MetricIdTopicName] = *ev.TopicPartition.Topic
+			} else {
+				delete(metricLabels, MetricIdTopicName)
+				delete(metricLabels, MetricIdErrorCode)
+			}
 			if ev.TopicPartition.Error != nil {
+				metricLabels[MetricIdStatusCode] = "500"
 				log.Error().Interface("event", ev).Msg(semLogContext + " delivery failed")
 			} else {
+				metricLabels[MetricIdStatusCode] = "200"
 				log.Trace().Interface("partition", ev.TopicPartition).Msg(semLogContext + " delivered message")
 			}
+
 		case kafka.Error:
+			metricLabels[MetricIdStatusCode] = "500"
+			metricLabels[MetricIdErrorCode] = ev.Code().String()
+			delete(metricLabels, MetricIdTopicName)
 			log.Error().Bool("is-retriable", ev.IsRetriable()).Bool("is-fatal", ev.IsFatal()).Interface("error", ev.Error()).Interface("code", ev.Code()).Interface("text", ev.Code().String()).Msg(semLogContext)
 		}
 
-		if exitFromLoop {
-			break
-		}
+		setMetrics(lks.cfg.Producer.AsyncDeliveryMetrics, metricLabels)
+
+		/*
+			if exitFromLoop {
+				break
+			}
+		*/
 	}
 
 	log.Info().Msg(semLogContext + " exiting from monitor producer events")
+}
+
+func setMetrics(metrics promutil.MetricsConfigReference, lbls prometheus.Labels) error {
+	const semLogContext = "kafka-lks::set-monitor-producer-metrics"
+
+	var err error
+	var g promutil.Group
+
+	if metrics.IsEnabled() {
+		g, _, err = metrics.ResolveGroup(nil)
+		if err != nil {
+			log.Error().Err(err).Msg(semLogContext)
+			return err
+		}
+
+		if metrics.IsCounterEnabled() {
+			err = g.SetMetricValueById(metrics.CounterId, 1, lbls)
+		}
+	}
+
+	return err
 }
 
 type ProducerResponse struct {
