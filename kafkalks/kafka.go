@@ -3,6 +3,7 @@ package kafkalks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
@@ -259,30 +260,32 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 
 	for e := range producer.Events() {
 
+		delete(metricLabels, MetricIdTopicName)
+		delete(metricLabels, MetricIdErrorCode)
+		metricLabels[MetricIdStatusCode] = "500"
+
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Topic != nil {
 				metricLabels[MetricIdTopicName] = *ev.TopicPartition.Topic
-			} else {
-				delete(metricLabels, MetricIdTopicName)
-				delete(metricLabels, MetricIdErrorCode)
 			}
+
 			if ev.TopicPartition.Error != nil {
-				metricLabels[MetricIdStatusCode] = "500"
 				log.Error().Interface("event", ev).Msg(semLogContext + " delivery failed")
 			} else {
 				metricLabels[MetricIdStatusCode] = "200"
 				log.Trace().Interface("partition", ev.TopicPartition).Msg(semLogContext + " delivered message")
 			}
-
+			_ = setMetrics(lks.cfg.Producer.AsyncDeliveryMetrics, metricLabels)
 		case kafka.Error:
-			metricLabels[MetricIdStatusCode] = "500"
 			metricLabels[MetricIdErrorCode] = ev.Code().String()
-			delete(metricLabels, MetricIdTopicName)
-			log.Error().Bool("is-retriable", ev.IsRetriable()).Bool("is-fatal", ev.IsFatal()).Interface("error", ev.Error()).Interface("code", ev.Code()).Interface("text", ev.Code().String()).Msg(semLogContext)
-		}
 
-		setMetrics(lks.cfg.Producer.AsyncDeliveryMetrics, metricLabels)
+			log.Error().Bool("is-retriable", ev.IsRetriable()).Bool("is-fatal", ev.IsFatal()).Interface("error", ev.Error()).Interface("code", ev.Code()).Interface("text", ev.Code().String()).Msg(semLogContext)
+			_ = setMetrics(lks.cfg.Producer.AsyncDeliveryMetrics, metricLabels)
+		default:
+			log.Warn().Str("event-type", fmt.Sprint("%T", ev)).Msg(semLogContext + " un-detected event type")
+			log.Warn().Interface("event", ev).Msg(semLogContext + " un-detected event value")
+		}
 
 		/*
 			if exitFromLoop {
