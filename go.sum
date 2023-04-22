@@ -35,8 +35,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.93 h1:1BsRnm6+sL+J6KItQ5Dq2+mF+Prtey3auYA73rX/ak8=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.0.93/go.mod h1:WZLFgy+qbyanFBP25v+0WVvcqgYJHCeqsRmVSWXMC2o=
-github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.21 h1:jpGBxUIa1gemaWcsww4Yyncq/eDEbEfkZvHiTn13xAY=
-github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.21/go.mod h1:1oQ+7oWdLt5PSbmGi1Q6l6C+dOfJI8U4WYDjnb55b38=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.22 h1:v2gw1HtPJmdQcRYge4BqWwcx/GHQkJvesJiOnntNzvg=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.22/go.mod h1:Y13gjF4YPsuSvXZkp+kGXwx4GZGlySk1sxw7nAVPxWk=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2 h1:5IcZpTvzydCQeHzK4Ef/D5rrSqwxob0t8PQPMybUNFM=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2/go.mod h1:yDgFjdqOqDEKOvasDdhWNXYg9BVp4O+o5f6V/ehm6Oo=
 github.com/actgardner/gogen-avro/v10 v10.1.0/go.mod h1:o+ybmVjEa27AAr35FRqU98DJu1fXES56uXniYFv4yDA=
