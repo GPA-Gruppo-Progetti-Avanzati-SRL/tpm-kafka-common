@@ -422,7 +422,7 @@ func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOn
 }
 
 func (tp *transformerProducerImpl) getProducerForTopic(topicCfg *ConfigTopic) (*kafka.Producer, error) {
-	n := util.Coalesce(topicCfg.BrokerName, tp.cfg.BrokerName)
+	n := util.StringCoalesce(topicCfg.BrokerName, tp.cfg.BrokerName)
 	if p, ok := tp.producers[n]; ok {
 		return p, nil
 	}

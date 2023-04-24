@@ -45,7 +45,7 @@ func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
 	const semLogContext = "t-prod-config::count-distinct-brokers"
 	m := make(map[string]struct{})
 	for _, t := range cfg.ToTopics {
-		n := util.Coalesce(t.BrokerName, cfg.BrokerName)
+		n := util.StringCoalesce(t.BrokerName, cfg.BrokerName)
 		if _, ok := m[n]; !ok {
 			m[n] = struct{}{}
 		}
