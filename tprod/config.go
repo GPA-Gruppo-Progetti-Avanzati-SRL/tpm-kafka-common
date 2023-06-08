@@ -33,6 +33,7 @@ type TransformerProducerConfig struct {
 }
 
 type ConfigTopic struct {
+	Id             string    `yaml:"id" mapstructure:"id" json:"id"`
 	Name           string    `yaml:"name" mapstructure:"name" json:"name"`
 	BrokerName     string    `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
 	MaxPollTimeout int       `yaml:"max-poll-timeout" mapstructure:"max-poll-timeout" json:"max-poll-timeout"`
@@ -59,7 +60,7 @@ func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
 	return brokerList
 }
 
-func (cfg *TransformerProducerConfig) FindTopic(n string) (int, error) {
+func (cfg *TransformerProducerConfig) FindTopicByName(n string) (int, error) {
 	for i, p := range cfg.ToTopics {
 		if p.Name == n {
 			return i, nil
@@ -67,6 +68,31 @@ func (cfg *TransformerProducerConfig) FindTopic(n string) (int, error) {
 	}
 
 	return -1, fmt.Errorf("cannot find topic by name %s", n)
+}
+
+func (cfg *TransformerProducerConfig) FindTopicById(id string) (int, error) {
+	for i, p := range cfg.ToTopics {
+
+		// Use name if id has not been set
+		tid := p.Id
+		if tid == "" {
+			tid = p.Name
+		}
+		if tid == id {
+			return i, nil
+		}
+	}
+
+	return -1, fmt.Errorf("cannot find topic by id %s", id)
+}
+
+func (cfg *TransformerProducerConfig) FindTopicByIdOrType(topicId string, topicType TopicType) (int, error) {
+
+	if topicId != "" {
+		return cfg.FindTopicById(topicId)
+	}
+
+	return cfg.FindTopicByType(topicType)
 }
 
 func (cfg *TransformerProducerConfig) FindTopicByType(topicType TopicType) (int, error) {

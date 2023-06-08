@@ -440,10 +440,10 @@ func (tp *transformerProducerImpl) getProducer() *kafka.Producer {
 	panic(fmt.Errorf("ambiguous get of first producer out of %d", len(tp.producers)))
 }
 
-func (tp *transformerProducerImpl) produce2Topic(m Message) error {
+func (tp *transformerProducerImpl) produce2Topic(msgs []Message) error {
 	const semLogContext = "t-prod::produce-to-topic"
 
-	if m.IsZero() {
+	if len(msgs) == 0 {
 		if tp.cfg.CountTopicsByType("std") > 0 {
 			// Produce a warn only in case there are standard topics configured
 			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message empty no output provided")
@@ -455,57 +455,59 @@ func (tp *transformerProducerImpl) produce2Topic(m Message) error {
 		return nil
 	}
 
-	if tcfg, err := tp.cfg.FindTopicByType(m.ToTopic.TopicType); err != nil {
-		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Str("type", string(m.ToTopic.TopicType)).Msg(semLogContext + " error in determining target topic")
-		return err
-	} else {
-		log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Str("topic", tp.cfg.ToTopics[tcfg].Name).Msg("producing message")
-
-		headers := make(map[string]string)
-		if m.Span != nil {
-			opentracing.GlobalTracer().Inject(
-				m.Span.Context(),
-				opentracing.TextMap,
-				opentracing.TextMapCarrier(headers))
-		} else {
-			log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message trace has not been set")
-		}
-
-		if m.HarSpan != nil {
-			hartracing.GlobalTracer().Inject(
-				m.HarSpan.Context(),
-				hartracing.TextMapCarrier(headers))
-		} else {
-			log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message har-trace has not been set")
-		}
-
-		for headerKey, headerValue := range m.Headers {
-			headers[headerKey] = headerValue
-		}
-
-		var kh []kafka.Header
-		for headerKey, headerValue := range headers {
-			kh = append(kh, kafka.Header{
-				Key:   headerKey,
-				Value: []byte(headerValue),
-			})
-		}
-
-		km := &kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: &tp.cfg.ToTopics[tcfg].Name, Partition: kafka.PartitionAny},
-			Key:            m.Key,
-			Value:          m.Body,
-			Headers:        kh,
-		}
-
-		producer, err := tp.getProducerForTopic(&tp.cfg.ToTopics[tcfg])
-		if err != nil {
+	for _, m := range msgs {
+		if tcfg, err := tp.cfg.FindTopicByIdOrType(m.ToTopic.Id, m.ToTopic.TopicType); err != nil {
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Str("type", string(m.ToTopic.TopicType)).Msg(semLogContext + " error in determining target topic")
 			return err
-		}
+		} else {
+			log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Str("topic", tp.cfg.ToTopics[tcfg].Name).Msg("producing message")
 
-		if err := producer.Produce(km, nil); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " errors in producing message")
-			return err
+			headers := make(map[string]string)
+			if m.Span != nil {
+				opentracing.GlobalTracer().Inject(
+					m.Span.Context(),
+					opentracing.TextMap,
+					opentracing.TextMapCarrier(headers))
+			} else {
+				log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message trace has not been set")
+			}
+
+			if m.HarSpan != nil {
+				hartracing.GlobalTracer().Inject(
+					m.HarSpan.Context(),
+					hartracing.TextMapCarrier(headers))
+			} else {
+				log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " message har-trace has not been set")
+			}
+
+			for headerKey, headerValue := range m.Headers {
+				headers[headerKey] = headerValue
+			}
+
+			var kh []kafka.Header
+			for headerKey, headerValue := range headers {
+				kh = append(kh, kafka.Header{
+					Key:   headerKey,
+					Value: []byte(headerValue),
+				})
+			}
+
+			km := &kafka.Message{
+				TopicPartition: kafka.TopicPartition{Topic: &tp.cfg.ToTopics[tcfg].Name, Partition: kafka.PartitionAny},
+				Key:            m.Key,
+				Value:          m.Body,
+				Headers:        kh,
+			}
+
+			producer, err := tp.getProducerForTopic(&tp.cfg.ToTopics[tcfg])
+			if err != nil {
+				return err
+			}
+
+			if err := producer.Produce(km, nil); err != nil {
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " errors in producing message")
+				return err
+			}
 		}
 	}
 

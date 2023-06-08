@@ -45,7 +45,7 @@ func NewEcho(cfg *Config, wg *sync.WaitGroup) (tprod.TransformerProducer, error)
 	return &b, err
 }
 
-func (b *echoImpl) Process(km *kafka.Message, opts ...tprod.TransformerProducerProcessorOption) (tprod.Message, tprod.BAMData, error) {
+func (b *echoImpl) Process(km *kafka.Message, opts ...tprod.TransformerProducerProcessorOption) ([]tprod.Message, tprod.BAMData, error) {
 	const semLogContext = "echo-tprod::process"
 
 	tprodOpts := tprod.TransformerProducerOptions{}
@@ -60,7 +60,7 @@ func (b *echoImpl) Process(km *kafka.Message, opts ...tprod.TransformerProducerP
 
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext + " deadletter message not resubmittable.... need a terminal dlt?")
-		return tprod.Message{}, bamData, err
+		return nil, bamData, err
 	}
 
 	if b.cfg.ProcessorConfig.NumRetries >= 0 {
@@ -71,17 +71,17 @@ func (b *echoImpl) Process(km *kafka.Message, opts ...tprod.TransformerProducerP
 		numberOfAttempts := req.GetNumberOfAttempts(b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName)
 		if numberOfAttempts > b.cfg.ProcessorConfig.NumRetries {
 			log.Error().Int("number-of-attempts", numberOfAttempts).Int("num-retries", b.cfg.ProcessorConfig.NumRetries).Msg(semLogContext + " reached max number of retries")
-			return tprod.Message{}, bamData, nil
+			return nil, bamData, nil
 		}
 
 		req.Headers[b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName] = fmt.Sprint(numberOfAttempts + 1)
 	}
 
-	return tprod.Message{
+	return []tprod.Message{{
 		Span:    req.Span,
 		ToTopic: tprod.TargetTopic{TopicType: "std"},
 		Headers: req.Headers,
 		Key:     req.Key,
 		Body:    req.Body,
-	}, bamData, nil
+	}}, bamData, nil
 }

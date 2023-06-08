@@ -14,7 +14,7 @@ const (
 )
 
 type TargetTopic struct {
-	Name      string    `yaml:"name" mapstructure:"name" json:"name"`
+	Id        string    `yaml:"id" mapstructure:"id" json:"id"`
 	TopicType TopicType `yaml:"type" mapstructure:"type" json:"type"`
 }
 
@@ -32,7 +32,7 @@ func (m Message) IsZero() bool {
 }
 
 func (m Message) ShowInfo() {
-	log.Info().Str("type", string(m.ToTopic.TopicType)).Str("name", string(m.ToTopic.Name)).Int("value-size", len(m.Body)).Str("key", string(m.Key)).Msg("message info")
+	log.Info().Str("type", string(m.ToTopic.TopicType)).Str("name", string(m.ToTopic.Id)).Int("value-size", len(m.Body)).Str("key", string(m.Key)).Msg("message info")
 	for hn, hv := range m.Headers {
 		log.Info().Str("header-name", hn).Str("header-value", hv).Msg("message header")
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 type TransformerProducerProcessor interface {
-	Process(km *kafka.Message, opts ...TransformerProducerProcessorOption) (Message, BAMData, error)
+	Process(km *kafka.Message, opts ...TransformerProducerProcessorOption) ([]Message, BAMData, error)
 }
 
 type TransformerProducerOptions struct {
