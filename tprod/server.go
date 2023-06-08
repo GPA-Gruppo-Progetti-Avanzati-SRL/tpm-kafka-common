@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/rs/zerolog/log"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -16,6 +17,14 @@ type Server interface {
 type ServerConfig struct {
 	Exit              ConfigExitPolicy `yaml:"exit" mapstructure:"exit" json:"exit"`
 	EnabledProcessors string           `yaml:"enabled-processors,omitempty" mapstructure:"enabled-processors,omitempty" json:"enabled-processors,omitempty"`
+}
+
+func (sCfg *ServerConfig) IsProcessorEnabled(n string) bool {
+	if sCfg.EnabledProcessors == "" || strings.Contains(sCfg.EnabledProcessors, n) {
+		return true
+	}
+
+	return false
 }
 
 type server struct {
