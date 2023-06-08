@@ -456,8 +456,8 @@ func (tp *transformerProducerImpl) produce2Topic(m processor.Message) error {
 		return nil
 	}
 
-	if tcfg, err := tp.cfg.FindTopicByType(m.TopicType); err != nil {
-		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Str("type", string(m.TopicType)).Msg(semLogContext + " error in determining target topic")
+	if tcfg, err := tp.cfg.FindTopicByType(m.ToTopic.TopicType); err != nil {
+		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Str("type", string(m.ToTopic.TopicType)).Msg(semLogContext + " error in determining target topic")
 		return err
 	} else {
 		log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Str("topic", tp.cfg.ToTopics[tcfg].Name).Msg("producing message")

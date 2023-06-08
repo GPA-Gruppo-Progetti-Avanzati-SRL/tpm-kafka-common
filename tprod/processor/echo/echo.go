@@ -79,10 +79,10 @@ func (b *echoImpl) Process(km *kafka.Message, opts ...processor.TransformerProdu
 	}
 
 	return processor.Message{
-		Span:      req.Span,
-		TopicType: "std",
-		Headers:   req.Headers,
-		Key:       req.Key,
-		Body:      req.Body,
+		Span:    req.Span,
+		ToTopic: processor.TargetTopic{TopicType: "std"},
+		Headers: req.Headers,
+		Key:     req.Key,
+		Body:    req.Body,
 	}, bamData, nil
 }
