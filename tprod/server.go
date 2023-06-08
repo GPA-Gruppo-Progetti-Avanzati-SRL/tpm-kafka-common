@@ -14,7 +14,8 @@ type Server interface {
 }
 
 type ServerConfig struct {
-	Exit ConfigExitPolicy `yaml:"exit" mapstructure:"exit" json:"exit"`
+	Exit              ConfigExitPolicy `yaml:"exit" mapstructure:"exit" json:"exit"`
+	EnabledProcessors string           `yaml:"enabled-processors,omitempty" mapstructure:"enabled-processors,omitempty" json:"enabled-processors,omitempty"`
 }
 
 type server struct {
