@@ -20,24 +20,25 @@ type TracingCfg struct {
 
 type TransformerProducerConfig struct {
 	Name         string                     `yaml:"name" mapstructure:"name" json:"name"`
-	TickInterval time.Duration              `yaml:"tick-interval" mapstructure:"tick-interval" json:"tick-interval"`
+	TickInterval time.Duration              `yaml:"tick-interval,omitempty" mapstructure:"tick-interval,omitempty" json:"tick-interval,omitempty"`
 	Exit         ConfigExitPolicy           `yaml:"exit" mapstructure:"exit" json:"exit"`
 	Metrics      promutil.MetricGroupConfig `yaml:"metrics" mapstructure:"metrics" json:"metrics"`
-	CommitMode   string                     `yaml:"commit-mode" mapstructure:"commit-mode" json:"commit-mode"`
-	GroupId      string                     `yaml:"consumer-group-id" mapstructure:"consumer-group-id" json:"consumer-group-id"`
-	ProducerId   string                     `yaml:"producer-tx-id" mapstructure:"producer-tx-id" json:"producer-tx-id"`
+	CommitMode   string                     `yaml:"commit-mode,omitempty" mapstructure:"commit-mode,omitempty" json:"commit-mode,omitempty"`
+	GroupId      string                     `yaml:"consumer-group-id,omitempty" mapstructure:"consumer-group-id,omitempty" json:"consumer-group-id,omitempty"`
+	ProducerId   string                     `yaml:"producer-tx-id,omitempty" mapstructure:"producer-tx-id,omitempty" json:"producer-tx-id,omitempty"`
 	BrokerName   string                     `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
 	FromTopic    ConfigTopic                `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
-	ToTopics     []ConfigTopic              `yaml:"to-topics" mapstructure:"to-topics" json:"to-topics"`
+	ToTopics     []ConfigTopic              `yaml:"to-topics,omitempty" mapstructure:"to-topics,omitempty" json:"to-topics,omitempty"`
 	Tracing      TracingCfg                 `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
 }
 
 type ConfigTopic struct {
-	Id             string    `yaml:"id" mapstructure:"id" json:"id"`
-	Name           string    `yaml:"name" mapstructure:"name" json:"name"`
+	Id             string    `yaml:"id,omitempty" mapstructure:"id,omitempty" json:"id,omitempty"`
+	Name           string    `yaml:"name,omitempty" mapstructure:"name,omitempty" json:"name,omitempty"`
 	BrokerName     string    `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
-	MaxPollTimeout int       `yaml:"max-poll-timeout" mapstructure:"max-poll-timeout" json:"max-poll-timeout"`
-	TopicType      TopicType `yaml:"type" mapstructure:"type" json:"type"`
+	MaxPollTimeout int       `yaml:"max-poll-timeout,omitempty" mapstructure:"max-poll-timeout,omitempty" json:"max-poll-timeout,omitempty"`
+	TopicType      TopicType `yaml:"type,omitempty" mapstructure:"type,omitempty" json:"type,omitempty"`
+	MuteOn         bool      `yaml:"mute-on,omitempty" mapstructure:"mute-on,omitempty" json:"mute-on,omitempty"`
 }
 
 func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
