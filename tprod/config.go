@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/processor"
 	"github.com/rs/zerolog/log"
 	"time"
 )
@@ -34,10 +33,10 @@ type TransformerProducerConfig struct {
 }
 
 type ConfigTopic struct {
-	Name           string              `yaml:"name" mapstructure:"name" json:"name"`
-	BrokerName     string              `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
-	MaxPollTimeout int                 `yaml:"max-poll-timeout" mapstructure:"max-poll-timeout" json:"max-poll-timeout"`
-	TopicType      processor.TopicType `yaml:"type" mapstructure:"type" json:"type"`
+	Name           string    `yaml:"name" mapstructure:"name" json:"name"`
+	BrokerName     string    `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
+	MaxPollTimeout int       `yaml:"max-poll-timeout" mapstructure:"max-poll-timeout" json:"max-poll-timeout"`
+	TopicType      TopicType `yaml:"type" mapstructure:"type" json:"type"`
 }
 
 func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
@@ -70,7 +69,7 @@ func (cfg *TransformerProducerConfig) FindTopic(n string) (int, error) {
 	return -1, fmt.Errorf("cannot find topic by name %s", n)
 }
 
-func (cfg *TransformerProducerConfig) FindTopicByType(topicType processor.TopicType) (int, error) {
+func (cfg *TransformerProducerConfig) FindTopicByType(topicType TopicType) (int, error) {
 	for i, p := range cfg.ToTopics {
 		if p.TopicType == topicType {
 			return i, nil
@@ -80,7 +79,7 @@ func (cfg *TransformerProducerConfig) FindTopicByType(topicType processor.TopicT
 	return -1, fmt.Errorf("cannot find topic by type %s", topicType)
 }
 
-func (cfg *TransformerProducerConfig) CountTopicsByType(topicType processor.TopicType) int {
+func (cfg *TransformerProducerConfig) CountTopicsByType(topicType TopicType) int {
 	numTopics := 0
 	for _, p := range cfg.ToTopics {
 		if p.TopicType == topicType {

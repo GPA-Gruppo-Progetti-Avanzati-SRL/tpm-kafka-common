@@ -8,7 +8,6 @@ import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive/hartracing"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/processor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
@@ -49,7 +48,7 @@ type transformerProducerImpl struct {
 
 	numberOfMessages int
 	metrics          promutil.Group
-	processor        processor.TransformerProducerProcessor
+	processor        TransformerProducerProcessor
 }
 
 const (
@@ -254,7 +253,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 
 		isMessage = true
 		beginOfProcessing := time.Now()
-		sysMetricInfo := processor.BAMData{}
+		sysMetricInfo := BAMData{}
 		sysMetricInfo.AddMessageHeaders(e.Headers)
 		span, harSpan := tp.requestSpans(e.Headers)
 		defer span.Finish()
@@ -268,7 +267,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 			return isMessage, err
 		}
 
-		msg, bamData, err := tp.processor.Process(e, processor.TransformerProducerProcessorWithSpan(span), processor.TransformerProducerProcessorWithHarSpan(harSpan))
+		msg, bamData, err := tp.processor.Process(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
 		if err != nil {
 			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
 			_ = tp.abortTransaction(context.Background(), true)
@@ -441,7 +440,7 @@ func (tp *transformerProducerImpl) getProducer() *kafka.Producer {
 	panic(fmt.Errorf("ambiguous get of first producer out of %d", len(tp.producers)))
 }
 
-func (tp *transformerProducerImpl) produce2Topic(m processor.Message) error {
+func (tp *transformerProducerImpl) produce2Topic(m Message) error {
 	const semLogContext = "t-prod::produce-to-topic"
 
 	if m.IsZero() {
@@ -513,7 +512,7 @@ func (tp *transformerProducerImpl) produce2Topic(m processor.Message) error {
 	return nil
 }
 
-func (tp *transformerProducerImpl) produceMetrics(elapsed float64, err error, data processor.BAMData) {
+func (tp *transformerProducerImpl) produceMetrics(elapsed float64, err error, data BAMData) {
 
 	const semLogContext = "t-prod::produce-metrics"
 	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Float64("elapsed", elapsed).Msg(semLogContext)

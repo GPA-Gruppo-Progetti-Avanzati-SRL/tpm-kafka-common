@@ -1,4 +1,4 @@
-package processor
+package tprod
 
 import (
 	"encoding/json"

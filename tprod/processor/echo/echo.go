@@ -3,7 +3,6 @@ package echo
 import (
 	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod/processor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/rs/zerolog/log"
 	"sync"
@@ -46,22 +45,22 @@ func NewEcho(cfg *Config, wg *sync.WaitGroup) (tprod.TransformerProducer, error)
 	return &b, err
 }
 
-func (b *echoImpl) Process(km *kafka.Message, opts ...processor.TransformerProducerProcessorOption) (processor.Message, processor.BAMData, error) {
+func (b *echoImpl) Process(km *kafka.Message, opts ...tprod.TransformerProducerProcessorOption) (tprod.Message, tprod.BAMData, error) {
 	const semLogContext = "echo-tprod::process"
 
-	tprodOpts := processor.TransformerProducerOptions{}
+	tprodOpts := tprod.TransformerProducerOptions{}
 	for _, o := range opts {
 		o(&tprodOpts)
 	}
 
-	bamData := processor.BAMData{}
+	bamData := tprod.BAMData{}
 	bamData.AddLabel("test_label", "test_value")
 
 	req, err := newRequestIn(km, tprodOpts.Span)
 
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext + " deadletter message not resubmittable.... need a terminal dlt?")
-		return processor.Message{}, bamData, err
+		return tprod.Message{}, bamData, err
 	}
 
 	if b.cfg.ProcessorConfig.NumRetries >= 0 {
@@ -72,15 +71,15 @@ func (b *echoImpl) Process(km *kafka.Message, opts ...processor.TransformerProdu
 		numberOfAttempts := req.GetNumberOfAttempts(b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName)
 		if numberOfAttempts > b.cfg.ProcessorConfig.NumRetries {
 			log.Error().Int("number-of-attempts", numberOfAttempts).Int("num-retries", b.cfg.ProcessorConfig.NumRetries).Msg(semLogContext + " reached max number of retries")
-			return processor.Message{}, bamData, nil
+			return tprod.Message{}, bamData, nil
 		}
 
 		req.Headers[b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName] = fmt.Sprint(numberOfAttempts + 1)
 	}
 
-	return processor.Message{
+	return tprod.Message{
 		Span:    req.Span,
-		ToTopic: processor.TargetTopic{TopicType: "std"},
+		ToTopic: tprod.TargetTopic{TopicType: "std"},
 		Headers: req.Headers,
 		Key:     req.Key,
 		Body:    req.Body,
