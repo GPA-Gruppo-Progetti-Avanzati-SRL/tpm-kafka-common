@@ -267,12 +267,22 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 			return isMessage, err
 		}
 
-		msg, bamData, err := tp.processor.Process(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
-		if err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
-			_ = tp.abortTransaction(context.Background(), true)
-			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
-			return isMessage, err
+		msg, bamData, procErr := tp.processor.Process(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
+		if procErr != nil {
+			log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
+			switch tp.cfg.OnProcessError {
+			case "dlt":
+				msg = []Message{{Span: span,
+					ToTopic: TargetTopic{TopicType: "dead-letter"},
+					Headers: ToMessageHeaders(e.Headers),
+					Key:     e.Key,
+					Body:    e.Value,
+				}}
+			default:
+				_ = tp.abortTransaction(context.Background(), true)
+				tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
+				return isMessage, err
+			}
 		}
 
 		err = tp.produce2Topic(msg)
@@ -289,7 +299,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 			return isMessage, err
 		}
 
-		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
+		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), util.CoalesceError(procErr, err), sysMetricInfo.AddBAMData(bamData))
 
 	case kafka.PartitionEOF:
 		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " eof partition reached")
