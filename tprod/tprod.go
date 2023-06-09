@@ -280,8 +280,8 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 				}}
 			default:
 				_ = tp.abortTransaction(context.Background(), true)
-				tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
-				return isMessage, err
+				tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), procErr, sysMetricInfo.AddBAMData(bamData))
+				return isMessage, procErr
 			}
 		}
 
