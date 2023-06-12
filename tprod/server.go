@@ -3,8 +3,6 @@ package tprod
 import (
 	"errors"
 	"github.com/rs/zerolog/log"
-	"io"
-	"strings"
 	"time"
 )
 
@@ -12,19 +10,6 @@ type Server interface {
 	Close()
 	Start()
 	TransformerProducerTerminated(err error)
-}
-
-type ServerConfig struct {
-	Exit              ConfigExitPolicy `yaml:"exit" mapstructure:"exit" json:"exit"`
-	EnabledProcessors string           `yaml:"enabled-processors,omitempty" mapstructure:"enabled-processors,omitempty" json:"enabled-processors,omitempty"`
-}
-
-func (sCfg *ServerConfig) IsProcessorEnabled(n string) bool {
-	if sCfg.EnabledProcessors == "" || strings.Contains(sCfg.EnabledProcessors, n) {
-		return true
-	}
-
-	return false
 }
 
 type server struct {
@@ -89,14 +74,20 @@ func (s *server) TransformerProducerTerminated(err error) {
 		log.Info().Msg(semLogContext + " no more producers.... server not operative")
 		s.quitc <- errors.New("kafka consumer server not operative")
 	} else {
-		if err != io.EOF {
-			if s.cfg.Exit.OnFail {
-				log.Error().Err(err).Msg(semLogContext + " on first transform producer error.... server shutting down")
-				s.quitc <- errors.New("kafka consumer server fatal error")
-			}
-		} else if s.cfg.Exit.OnEof {
-			log.Info().Msg(semLogContext + " on first transform producer EOF.... server shutting down")
-			s.quitc <- errors.New("kafka consumer server eof")
+		if s.cfg.OnWorkerTerminated == "exit" {
+			log.Error().Err(err).Msg(semLogContext + " on worker terminated.... server shutting down")
+			s.quitc <- errors.New("tprod-server shutting down")
 		}
+		/*
+			if err != io.EOF {
+				if s.cfg.OnError == OnErrorExit {
+					log.Error().Err(err).Msg(semLogContext + " on first transform producer error.... server shutting down")
+					s.quitc <- errors.New("kafka consumer server fatal error")
+				}
+			} else if s.cfg.OnEof == OnEofExit {
+				log.Info().Msg(semLogContext + " on first transform producer EOF.... server shutting down")
+				s.quitc <- errors.New("kafka consumer server eof")
+			}
+		*/
 	}
 }

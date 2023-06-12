@@ -128,12 +128,12 @@ func (tp *transformerProducerImpl) exitOnError(semLogContext string, err error) 
 
 	if err != nil {
 		if err == io.EOF {
-			if tp.cfg.Exit.OnEof {
+			if tp.cfg.OnEof == OnEofExit {
 				log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting on eof reached")
 				return true
 			}
 		} else {
-			if tp.cfg.Exit.OnFail {
+			if tp.cfg.OnError == OnErrorExit {
 				log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting on error")
 				return true
 			}
@@ -153,7 +153,7 @@ func (tp *transformerProducerImpl) pollLoop() {
 		select {
 		case <-ticker.C:
 			// _ = level.Info(tp.logger).Log(system.DefaultLogMessageField, "I'm ticking")
-			if err := tp.processBatch(context.Background()); err != nil && tp.cfg.Exit.OnFail {
+			if err := tp.processBatch(context.Background()); err != nil && tp.cfg.OnError == OnErrorExit {
 				ticker.Stop()
 				tp.shutDown(err)
 				return
@@ -180,8 +180,8 @@ func (tp *transformerProducerImpl) pollLoop() {
 				return
 			} else if isMsg {
 				tp.numberOfMessages++
-				if tp.cfg.Exit.EofAfterN > 0 && tp.numberOfMessages >= tp.cfg.Exit.EofAfterN {
-					if tp.cfg.Exit.OnEof {
+				if tp.cfg.EofAfterN > 0 && tp.numberOfMessages >= tp.cfg.EofAfterN {
+					if tp.cfg.OnEof == OnEofExit {
 						log.Info().Int("number-of-messages", tp.numberOfMessages).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " poll max number of events reached, transform producer exiting....")
 						tp.Close()
 					}
@@ -270,10 +270,10 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 		msg, bamData, procErr := tp.processor.Process(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
 		if procErr != nil {
 			log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
-			switch tp.cfg.OnProcessError {
-			case "dlt":
+			switch tp.cfg.OnError {
+			case OnErrorDeadLetter:
 				msg = []Message{{Span: span,
-					ToTopic: TargetTopic{TopicType: "dead-letter"},
+					ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},
 					Headers: ToMessageHeaders(e.Headers),
 					Key:     e.Key,
 					Body:    e.Value,
@@ -304,7 +304,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 	case kafka.PartitionEOF:
 		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " eof partition reached")
 		tp.eofCnt++
-		if tp.cfg.Exit.OnEof && tp.eofCnt >= tp.partitionsCnt {
+		if tp.cfg.OnEof == OnEofExit && tp.eofCnt >= tp.partitionsCnt {
 			err = io.EOF
 		}
 	case kafka.Error:

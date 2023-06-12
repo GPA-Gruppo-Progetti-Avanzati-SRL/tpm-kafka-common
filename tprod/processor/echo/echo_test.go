@@ -59,11 +59,9 @@ func TestMain(m *testing.M) {
 		TransformerProducerConfig: &tprod.TransformerProducerConfig{
 			Name:         "tp-echo",
 			TickInterval: time.Millisecond * 400,
-			Exit: tprod.ConfigExitPolicy{
-				OnFail:    false,
-				OnEof:     true,
-				EofAfterN: 0,
-			},
+			OnError:      tprod.OnErrorDeadLetter,
+			OnEof:        tprod.OnEofExit,
+			EofAfterN:    0,
 			Metrics: promutil.MetricGroupConfig{
 				Namespace: "kafkalks",
 				Subsystem: "echotest",
