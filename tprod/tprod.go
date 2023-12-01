@@ -102,7 +102,7 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
-				log.Info().Interface("event", ev).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery failed")
+				log.Error().Err(ev.TopicPartition.Error).Interface("event", ev).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery failed")
 				if err := tp.abortTransaction(nil, true); err != nil {
 					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
 				}
