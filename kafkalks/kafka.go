@@ -271,7 +271,7 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 			}
 
 			if ev.TopicPartition.Error != nil {
-				log.Error().Interface("event", ev).Msg(semLogContext + " delivery failed")
+				log.Error().Err(ev.TopicPartition.Error).Interface("event", ev).Msg(semLogContext + " delivery failed")
 			} else {
 				metricLabels[MetricIdStatusCode] = "200"
 				log.Trace().Interface("partition", ev.TopicPartition).Msg(semLogContext + " delivered message")
@@ -280,7 +280,7 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 		case kafka.Error:
 			metricLabels[MetricIdErrorCode] = ev.Code().String()
 
-			log.Error().Bool("is-retriable", ev.IsRetriable()).Bool("is-fatal", ev.IsFatal()).Interface("error", ev.Error()).Interface("code", ev.Code()).Interface("text", ev.Code().String()).Msg(semLogContext)
+			log.Error().Bool("is-retryable", ev.IsRetriable()).Bool("is-fatal", ev.IsFatal()).Interface("error", ev.Error()).Interface("code", ev.Code()).Interface("text", ev.Code().String()).Msg(semLogContext)
 			_ = setMetrics(lks.cfg.Producer.AsyncDeliveryMetrics, metricLabels)
 		default:
 			log.Warn().Str("event-type", fmt.Sprint("%T", ev)).Msg(semLogContext + " un-detected event type")
