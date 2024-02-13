@@ -39,15 +39,15 @@ type transformerProducerImpl struct {
 
 	parent Server
 
-	txActive  bool
-	producers map[string]*kafka.Producer
-	consumer  *kafka.Consumer
+	txActive    bool
+	producers   map[string]*kafka.Producer
+	msgProducer MessageProducer
+	consumer    *kafka.Consumer
 
 	partitionsCnt int
 	eofCnt        int
 
 	numberOfMessages int
-	metrics          promutil.Group
 	processor        TransformerProducerProcessor
 }
 
@@ -102,7 +102,7 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
-				log.Error().Err(ev.TopicPartition.Error).Interface("event", ev).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery failed")
+				log.Error().Err(ev.TopicPartition.Error).Int64("offset", int64(ev.TopicPartition.Offset)).Int32("partition", ev.TopicPartition.Partition).Interface("topic", ev.TopicPartition.Topic).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery failed")
 				if err := tp.abortTransaction(nil, true); err != nil {
 					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
 				}
@@ -111,7 +111,7 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 					exitFromLoop = true
 				}
 			} else {
-				log.Trace().Interface("partition", ev.TopicPartition).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivered message")
+				log.Trace().Int64("offset", int64(ev.TopicPartition.Offset)).Int32("partition", ev.TopicPartition.Partition).Interface("topic", ev.TopicPartition.Topic).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery ok")
 			}
 		}
 
@@ -191,7 +191,123 @@ func (tp *transformerProducerImpl) pollLoop() {
 	}
 }
 
+func (tp *transformerProducerImpl) addMessage2Batch(km *kafka.Message) error {
+	const semLogContext = "t-prod::add-message-2-batch"
+	var err error
+	if err = tp.beginTransaction(false); err != nil {
+		log.Error().Err(err).Msg(semLogContext)
+		return err
+	}
+
+	err = tp.processor.AddMessage2Batch(km, tp.msgProducer)
+	if err != nil {
+		log.Error().Err(err).Msg(semLogContext)
+		return err
+	}
+
+	return nil
+}
+
 func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
+	const semLogContext = "t-prod::process-batch"
+
+	if tp.cfg.WorkMode != WorkModeBatch {
+		return nil
+	}
+
+	defer tp.msgProducer.Release()
+
+	if tp.processor.BatchSize() == 0 {
+		err := tp.msgProducer.Close()
+		if err != nil {
+			_ = tp.abortTransaction(context.Background(), false)
+			return err
+		}
+
+		if tp.txActive {
+			log.Info().Msg(semLogContext + " - transaction is active but batch is of size zero... committing")
+			if err := tp.commitTransaction(ctx, false); err != nil {
+				_ = tp.abortTransaction(context.Background(), false)
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := tp.processor.ProcessBatch(tp.msgProducer); err != nil {
+		_ = tp.abortTransaction(context.Background(), false)
+		return err
+	} else {
+		err := tp.msgProducer.Close()
+		if err != nil {
+			_ = tp.abortTransaction(context.Background(), false)
+			return err
+		}
+	}
+
+	tp.processor.Clear()
+
+	if err := tp.commitTransaction(ctx, false); err != nil {
+		_ = tp.abortTransaction(context.Background(), false)
+		return err
+	}
+
+	return nil
+}
+
+func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
+	const semLogContext = "t-prod::process-message"
+
+	var err error
+
+	beginOfProcessing := time.Now()
+	sysMetricInfo := BAMData{}
+	sysMetricInfo.AddMessageHeaders(e.Headers)
+	span, harSpan := tp.requestSpans(e.Headers)
+	defer span.Finish()
+	if harSpan != nil {
+		defer harSpan.Finish()
+	}
+
+	if err = tp.beginTransaction(false); err != nil {
+		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error beginning transaction")
+		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo)
+		return err
+	}
+
+	msg, bamData, procErr := tp.processor.ProcessMessage(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
+	if procErr != nil {
+		log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
+		switch tp.cfg.OnError {
+		case OnErrorDeadLetter:
+			msg = []Message{{Span: span,
+				ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},
+				Headers: ToMessageHeaders(e.Headers),
+				Key:     e.Key,
+				Body:    e.Value,
+			}}
+		default:
+			_ = tp.abortTransaction(context.Background(), true)
+			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), procErr, sysMetricInfo.AddBAMData(bamData))
+			return procErr
+		}
+	}
+
+	err = tp.produce2Topic(msg)
+	if err != nil {
+		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error producing output message")
+		_ = tp.abortTransaction(context.Background(), true)
+		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
+		return err
+	}
+
+	err = tp.commitTransaction(context.Background(), true)
+	if err != nil {
+		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
+		return err
+	}
+
+	tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), util.CoalesceError(procErr, err), sysMetricInfo.AddBAMData(bamData))
 	return nil
 }
 
@@ -252,55 +368,62 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 	case *kafka.Message:
 
 		isMessage = true
-		beginOfProcessing := time.Now()
-		sysMetricInfo := BAMData{}
-		sysMetricInfo.AddMessageHeaders(e.Headers)
-		span, harSpan := tp.requestSpans(e.Headers)
-		defer span.Finish()
-		if harSpan != nil {
-			defer harSpan.Finish()
+		if tp.cfg.WorkMode == WorkModeBatch {
+			err = tp.addMessage2Batch(e)
+		} else {
+			err = tp.processMessage(e)
 		}
 
-		if err = tp.beginTransaction(false); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error beginning transaction")
-			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo)
-			return isMessage, err
-		}
-
-		msg, bamData, procErr := tp.processor.Process(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
-		if procErr != nil {
-			log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
-			switch tp.cfg.OnError {
-			case OnErrorDeadLetter:
-				msg = []Message{{Span: span,
-					ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},
-					Headers: ToMessageHeaders(e.Headers),
-					Key:     e.Key,
-					Body:    e.Value,
-				}}
-			default:
-				_ = tp.abortTransaction(context.Background(), true)
-				tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), procErr, sysMetricInfo.AddBAMData(bamData))
-				return isMessage, procErr
+		/*
+			beginOfProcessing := time.Now()
+			sysMetricInfo := BAMData{}
+			sysMetricInfo.AddMessageHeaders(e.Headers)
+			span, harSpan := tp.requestSpans(e.Headers)
+			defer span.Finish()
+			if harSpan != nil {
+				defer harSpan.Finish()
 			}
-		}
 
-		err = tp.produce2Topic(msg)
-		if err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error producing output message")
-			_ = tp.abortTransaction(context.Background(), true)
-			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
-			return isMessage, err
-		}
+			if err = tp.beginTransaction(false); err != nil {
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error beginning transaction")
+				tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo)
+				return isMessage, err
+			}
 
-		err = tp.commitTransaction(context.Background(), true)
-		if err != nil {
-			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
-			return isMessage, err
-		}
+			msg, bamData, procErr := tp.processor.Process(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
+			if procErr != nil {
+				log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
+				switch tp.cfg.OnError {
+				case OnErrorDeadLetter:
+					msg = []Message{{Span: span,
+						ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},
+						Headers: ToMessageHeaders(e.Headers),
+						Key:     e.Key,
+						Body:    e.Value,
+					}}
+				default:
+					_ = tp.abortTransaction(context.Background(), true)
+					tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), procErr, sysMetricInfo.AddBAMData(bamData))
+					return isMessage, procErr
+				}
+			}
 
-		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), util.CoalesceError(procErr, err), sysMetricInfo.AddBAMData(bamData))
+			err = tp.produce2Topic(msg)
+			if err != nil {
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error producing output message")
+				_ = tp.abortTransaction(context.Background(), true)
+				tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
+				return isMessage, err
+			}
 
+			err = tp.commitTransaction(context.Background(), true)
+			if err != nil {
+				tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
+				return isMessage, err
+			}
+
+			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), util.CoalesceError(procErr, err), sysMetricInfo.AddBAMData(bamData))
+		*/
 	case kafka.PartitionEOF:
 		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " eof partition reached")
 		tp.eofCnt++
@@ -527,22 +650,44 @@ func (tp *transformerProducerImpl) produce2Topic(msgs []Message) error {
 	return nil
 }
 
-func (tp *transformerProducerImpl) produceMetrics(elapsed float64, err error, data BAMData) {
+func (tp *transformerProducerImpl) produceMetrics(elapsed float64, errParam error, data BAMData) {
 
 	const semLogContext = "t-prod::produce-metrics"
 	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Float64("elapsed", elapsed).Msg(semLogContext)
 
-	// data.Trace()
+	if tp.cfg.RefMetrics != nil && tp.cfg.RefMetrics.IsEnabled() {
+		g, err := promutil.GetGroup(tp.cfg.RefMetrics.GId)
+		if err != nil {
+			log.Warn().Err(err).Msg(semLogContext)
+			return
+		}
 
-	tp.metrics.SetMetricValueById(TprodStdMetricMessages, 1, data.Labels)
-	tp.metrics.SetMetricValueById(TprodStdMetricDuration, elapsed, data.Labels)
-	if err != nil {
-		tp.metrics.SetMetricValueById(TProdStdMetricErrors, 1, data.Labels)
-	}
-	for _, md := range data.MetricsData {
-		_ = tp.metrics.SetMetricValueById(md.MetricId, md.Value, data.Labels)
-	}
+		err = g.SetMetricValueById(TprodStdMetricMessages, 1, data.Labels)
+		if err != nil {
+			log.Warn().Err(err).Msg(semLogContext)
+		}
 
+		err = g.SetMetricValueById(TprodStdMetricDuration, elapsed, data.Labels)
+		if err != nil {
+			log.Warn().Err(err).Msg(semLogContext)
+		}
+
+		if errParam != nil {
+			err = g.SetMetricValueById(TProdStdMetricErrors, 1, data.Labels)
+			if err != nil {
+				log.Warn().Err(err).Msg(semLogContext)
+				return
+			}
+		}
+
+		for _, md := range data.MetricsData {
+			err = g.SetMetricValueById(md.MetricId, md.Value, data.Labels)
+			if err != nil {
+				log.Warn().Err(err).Msg(semLogContext)
+				return
+			}
+		}
+	}
 }
 
 func (tp *transformerProducerImpl) requestSpans(hs []kafka.Header) (opentracing.Span, hartracing.Span) {

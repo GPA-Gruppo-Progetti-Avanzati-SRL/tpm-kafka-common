@@ -2,6 +2,7 @@ package echo
 
 import (
 	"bytes"
+	"errors"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
@@ -19,21 +20,38 @@ type RequestIn struct {
 }
 
 const (
-	CENumberOfAttempts = "ce_bconn_rtp_bridge_no_attempts" //  Number of times the message has been processed
+	CENumberOfAttempts = "ce_no_attempts" //  Number of times the message has been processed
+	CEIsError          = "ce_is_error"
 )
 
-func (r *RequestIn) GetNumberOfAttempts(hn string) int {
-
+func (r *RequestIn) GetHeaderAsInt(hn string) int {
+	const semLogContext = "echo::get-header-as-int"
 	h := r.Header(hn)
 	if h == "" {
-		log.Error().Msg("dead-letter message without expected header " + hn)
+		log.Info().Str("name", hn).Msg(semLogContext + " not found")
 		return 1
 	}
 
 	ih, err := strconv.Atoi(h)
 	if err != nil {
-		log.Error().Err(err).Str(hn, h).Msg("dead-letter message header " + hn + " invalid format")
+		log.Error().Err(err).Str(hn, h).Msg("message header " + hn + " invalid format")
 		return 1
+	}
+
+	return ih
+}
+
+func (r *RequestIn) GetHeaderAsBool(hn string) bool {
+
+	h := r.Header(hn)
+	if h == "" {
+		return false
+	}
+
+	ih, err := strconv.ParseBool(h)
+	if err != nil {
+		log.Error().Err(err).Str(hn, h).Msg("message header " + hn + " invalid format")
+		return false
 	}
 
 	return ih
@@ -101,6 +119,11 @@ func newRequestIn(km *kafka.Message, span opentracing.Span) (RequestIn, error) {
 	//}
 
 	req.Span = span
+
+	if req.GetHeaderAsBool(CEIsError) {
+		err = errors.New("error triggered by header")
+	}
+
 	return req, err
 }
 

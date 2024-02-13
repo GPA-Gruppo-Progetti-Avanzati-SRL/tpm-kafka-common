@@ -3,7 +3,6 @@ package tprod
 import (
 	"context"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/rs/zerolog/log"
@@ -15,10 +14,10 @@ import (
 
 func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, processor TransformerProducerProcessor) (TransformerProducer, error) {
 	const semLogContext = "t-prod-factory::new"
-	mr, err := promutil.InitGroup(cfg.Metrics)
-	if err != nil {
-		log.Error().Err(err).Msg(semLogContext + " error creating metrics")
-		return nil, err
+	var err error
+
+	if cfg.WorkMode != WorkModeBatch {
+		cfg.WorkMode = WorkModeMsg
 	}
 
 	t := transformerProducerImpl{
@@ -30,7 +29,6 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		consumer:      nil,
 		partitionsCnt: 0,
 		eofCnt:        0,
-		metrics:       mr,
 		processor:     processor,
 		wg:            wg,
 	}
@@ -72,8 +70,15 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		log.Warn().Msg(semLogContext + " no output topics configured...")
 	}
 
+	if len(producerBrokers) > 1 {
+		cfg.WorkMode = WorkModeMsg
+	}
+
 	for _, brokerName := range producerBrokers {
 		p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId)
+		if cfg.WorkMode == WorkModeBatch {
+			t.msgProducer = NewMessageProducer(p, true, cfg.ToTopics)
+		}
 		if err != nil {
 			return nil, err
 		}

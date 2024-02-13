@@ -12,6 +12,8 @@ type TopicType string
 const (
 	TopicTypeStd        TopicType = "std"
 	TopicTypeDeadLetter TopicType = "dead-letter"
+
+	TopicIdDeadLetter = "dead-letter"
 )
 
 type TargetTopic struct {
