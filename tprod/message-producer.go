@@ -2,6 +2,7 @@ package tprod
 
 import (
 	"errors"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
@@ -26,13 +27,19 @@ type messageProducerImpl struct {
 	OutTopicsCfg     []ConfigTopic
 	producer         *kafka.Producer
 	messages         []Message
+	metricsGroupId   string
+	metricsLabels    map[string]string
 }
 
-func NewMessageProducer(producer *kafka.Producer, buffered bool, outs []ConfigTopic) MessageProducer {
+func NewMessageProducer(name string, producer *kafka.Producer, buffered bool, outs []ConfigTopic, metricsGroupId string) MessageProducer {
 	return &messageProducerImpl{
-		buffered:     buffered,
-		producer:     producer,
-		OutTopicsCfg: outs,
+		buffered:       buffered,
+		producer:       producer,
+		OutTopicsCfg:   outs,
+		metricsGroupId: metricsGroupId,
+		metricsLabels: map[string]string{
+			"name": name,
+		},
 	}
 }
 
@@ -162,9 +169,33 @@ func (p *messageProducerImpl) produce2Topic(m Message) error {
 
 		if err := p.producer.Produce(km, nil); err != nil {
 			log.Error().Err(err).Msg(semLogContext)
+			p.metricsLabels["status_code"] = "500"
+			p.produceMetric(nil, MetricMessagesToTopic, 1, p.metricsLabels)
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (p *messageProducerImpl) produceMetric(metricGroup *promutil.Group, metricId string, value float64, labels map[string]string) *promutil.Group {
+	const semLogContext = "t-prod::produce-metric"
+
+	var err error
+	if metricGroup == nil {
+		g, err := promutil.GetGroup(p.metricsGroupId)
+		if err != nil {
+			log.Warn().Err(err).Msg(semLogContext)
+			return nil
+		}
+
+		metricGroup = &g
+	}
+
+	err = metricGroup.SetMetricValueById(metricId, value, labels)
+	if err != nil {
+		log.Warn().Err(err).Msg(semLogContext)
+	}
+
+	return metricGroup
 }

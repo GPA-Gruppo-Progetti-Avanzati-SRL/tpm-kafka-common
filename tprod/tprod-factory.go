@@ -31,6 +31,9 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		eofCnt:        0,
 		processor:     processor,
 		wg:            wg,
+		metricLabels: map[string]string{
+			"name": cfg.Name,
+		},
 	}
 
 	if len(t.cfg.ToTopics) > 0 {
@@ -77,7 +80,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	for _, brokerName := range producerBrokers {
 		p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId)
 		if cfg.WorkMode == WorkModeBatch {
-			t.msgProducer = NewMessageProducer(p, true, cfg.ToTopics)
+			t.msgProducer = NewMessageProducer(cfg.Name, p, true, cfg.ToTopics, cfg.RefMetrics.GId)
 		}
 		if err != nil {
 			return nil, err

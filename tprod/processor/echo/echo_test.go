@@ -62,7 +62,7 @@ func TestMain(m *testing.M) {
 			Subsystem: "echotest",
 			Collectors: []promutil.MetricConfig{
 				{
-					Id:   "_errors",
+					Id:   "tprod-errors",
 					Name: "errors",
 					Help: "numero errori",
 					Labels: []promutil.MetricLabelConfig{
@@ -75,7 +75,7 @@ func TestMain(m *testing.M) {
 					Buckets: promutil.HistogramBucketConfig{},
 				},
 				{
-					Id:   "_messages",
+					Id:   "tprod-events",
 					Name: "messages",
 					Help: "numero messaggi",
 					Labels: []promutil.MetricLabelConfig{
@@ -88,7 +88,7 @@ func TestMain(m *testing.M) {
 					Buckets: promutil.HistogramBucketConfig{},
 				},
 				{
-					Id:   "_messages_to_topic",
+					Id:   "tprod-events-to-topic",
 					Name: "messages_to_topic",
 					Help: "numero messaggi prodotti su topic",
 					Labels: []promutil.MetricLabelConfig{
@@ -105,7 +105,7 @@ func TestMain(m *testing.M) {
 					Buckets: promutil.HistogramBucketConfig{},
 				},
 				{
-					Id:   "_duration",
+					Id:   "tprod-duration",
 					Name: "duration",
 					Help: "durata lavorazione",
 					Labels: []promutil.MetricLabelConfig{
@@ -162,8 +162,8 @@ func TestMain(m *testing.M) {
 					TopicType:      "std",
 				},
 				{
-					Id:             "echo-dead",
-					Name:           "echo-dead",
+					Id:             "echo-dlt",
+					Name:           "echo-dlt",
 					BrokerName:     "local",
 					MaxPollTimeout: 0,
 					TopicType:      "dead-letter",

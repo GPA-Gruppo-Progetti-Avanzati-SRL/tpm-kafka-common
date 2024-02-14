@@ -17,10 +17,14 @@ import (
 )
 
 const (
-	TProdStdMetricErrors          = "_errors"
-	TprodStdMetricMessages        = "_messages"
-	TprodStdMetricMessagesToTopic = "_messages_to_topic"
-	TprodStdMetricDuration        = "_duration"
+	MetricBatchErrors     = "tprod-batch-errors"
+	MetricBatches         = "tprod-batches"
+	MetricBatchSize       = "tprod-batch-size"
+	MetricBatchDuration   = "tprod-batch-duration"
+	MetricMessageErrors   = "tprod-event-errors"
+	MetricMessages        = "tprod-events"
+	MetricMessagesToTopic = "tprod-events-to-topic"
+	MetricMessageDuration = "tprod-event-duration"
 )
 
 type TransformerProducer interface {
@@ -49,6 +53,8 @@ type transformerProducerImpl struct {
 
 	numberOfMessages int
 	processor        TransformerProducerProcessor
+
+	metricLabels map[string]string
 }
 
 const (
@@ -97,12 +103,18 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " starting monitor producer events")
 
 	exitFromLoop := false
+	lbls := map[string]string{
+		"name":        tp.cfg.Name,
+		"status_code": "500",
+	}
 	for e := range producer.Events() {
 
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
 				log.Error().Err(ev.TopicPartition.Error).Int64("offset", int64(ev.TopicPartition.Offset)).Int32("partition", ev.TopicPartition.Partition).Interface("topic", ev.TopicPartition.Topic).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery failed")
+				lbls["status_code"] = "500"
+				_ = tp.produceMetric(nil, MetricMessagesToTopic, 1, lbls)
 				if err := tp.abortTransaction(nil, true); err != nil {
 					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
 				}
@@ -111,6 +123,8 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 					exitFromLoop = true
 				}
 			} else {
+				lbls["status_code"] = "200"
+				tp.produceMetric(nil, MetricMessagesToTopic, 1, lbls)
 				log.Trace().Int64("offset", int64(ev.TopicPartition.Offset)).Int32("partition", ev.TopicPartition.Partition).Interface("topic", ev.TopicPartition.Topic).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery ok")
 			}
 		}
@@ -152,8 +166,16 @@ func (tp *transformerProducerImpl) pollLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			// _ = level.Info(tp.logger).Log(system.DefaultLogMessageField, "I'm ticking")
-			if err := tp.processBatch(context.Background()); err != nil && tp.cfg.OnError == OnErrorExit {
+			beginOfProcessing := time.Now()
+			batchSize := tp.processor.BatchSize()
+			err := tp.processBatch(context.Background())
+			if batchSize > 0 {
+				metricGroup := tp.produceMetric(nil, MetricBatches, 1, tp.metricLabels)
+				metricGroup = tp.produceMetric(metricGroup, MetricBatchSize, float64(batchSize), tp.metricLabels)
+				metricGroup = tp.produceMetric(metricGroup, MetricBatchDuration, time.Since(beginOfProcessing).Seconds(), tp.metricLabels)
+			}
+			if err != nil && tp.cfg.OnError == OnErrorExit {
+				_ = tp.produceMetric(nil, MetricBatchErrors, 1, tp.metricLabels)
 				ticker.Stop()
 				tp.shutDown(err)
 				return
@@ -367,11 +389,22 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 		tp.eofCnt = 0
 	case *kafka.Message:
 
+		beginOfProcessing := time.Now()
+
 		isMessage = true
+
+		var metricGroup *promutil.Group
 		if tp.cfg.WorkMode == WorkModeBatch {
 			err = tp.addMessage2Batch(e)
+			metricGroup = tp.produceMetric(metricGroup, MetricMessages, 1, tp.metricLabels)
 		} else {
 			err = tp.processMessage(e)
+			metricGroup = tp.produceMetric(metricGroup, MetricMessages, 1, tp.metricLabels)
+			metricGroup = tp.produceMetric(metricGroup, MetricMessageDuration, time.Since(beginOfProcessing).Seconds(), tp.metricLabels)
+		}
+
+		if err != nil {
+			metricGroup = tp.produceMetric(metricGroup, MetricMessageErrors, 1, tp.metricLabels)
 		}
 
 		/*
@@ -650,44 +683,68 @@ func (tp *transformerProducerImpl) produce2Topic(msgs []Message) error {
 	return nil
 }
 
-func (tp *transformerProducerImpl) produceMetrics(elapsed float64, errParam error, data BAMData) {
+func (tp *transformerProducerImpl) produceMetric(metricGroup *promutil.Group, metricId string, value float64, labels map[string]string) *promutil.Group {
+	const semLogContext = "t-prod::produce-metric"
 
-	const semLogContext = "t-prod::produce-metrics"
-	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Float64("elapsed", elapsed).Msg(semLogContext)
-
-	if tp.cfg.RefMetrics != nil && tp.cfg.RefMetrics.IsEnabled() {
+	var err error
+	if metricGroup == nil {
 		g, err := promutil.GetGroup(tp.cfg.RefMetrics.GId)
 		if err != nil {
 			log.Warn().Err(err).Msg(semLogContext)
-			return
+			return nil
 		}
 
-		err = g.SetMetricValueById(TprodStdMetricMessages, 1, data.Labels)
-		if err != nil {
-			log.Warn().Err(err).Msg(semLogContext)
-		}
-
-		err = g.SetMetricValueById(TprodStdMetricDuration, elapsed, data.Labels)
-		if err != nil {
-			log.Warn().Err(err).Msg(semLogContext)
-		}
-
-		if errParam != nil {
-			err = g.SetMetricValueById(TProdStdMetricErrors, 1, data.Labels)
-			if err != nil {
-				log.Warn().Err(err).Msg(semLogContext)
-				return
-			}
-		}
-
-		for _, md := range data.MetricsData {
-			err = g.SetMetricValueById(md.MetricId, md.Value, data.Labels)
-			if err != nil {
-				log.Warn().Err(err).Msg(semLogContext)
-				return
-			}
-		}
+		metricGroup = &g
 	}
+
+	err = metricGroup.SetMetricValueById(metricId, value, labels)
+	if err != nil {
+		log.Warn().Err(err).Msg(semLogContext)
+	}
+
+	return metricGroup
+}
+
+func (tp *transformerProducerImpl) produceMetrics(elapsed float64, errParam error, data BAMData) {
+
+	const semLogContext = "t-prod::produce-metrics"
+	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Float64("elapsed", elapsed).Msg(semLogContext + "...disabled")
+
+	/*
+		if tp.cfg.RefMetrics != nil && tp.cfg.RefMetrics.IsEnabled() {
+			g, err := promutil.GetGroup(tp.cfg.RefMetrics.GId)
+			if err != nil {
+				log.Warn().Err(err).Msg(semLogContext)
+				return
+			}
+
+			err = g.SetMetricValueById(MetricMessages, 1, data.Labels)
+			if err != nil {
+				log.Warn().Err(err).Msg(semLogContext)
+			}
+
+			err = g.SetMetricValueById(MetricMessageDuration, elapsed, data.Labels)
+			if err != nil {
+				log.Warn().Err(err).Msg(semLogContext)
+			}
+
+			if errParam != nil {
+				err = g.SetMetricValueById(MetricMessageErrors, 1, data.Labels)
+				if err != nil {
+					log.Warn().Err(err).Msg(semLogContext)
+					return
+				}
+			}
+
+			for _, md := range data.MetricsData {
+				err = g.SetMetricValueById(md.MetricId, md.Value, data.Labels)
+				if err != nil {
+					log.Warn().Err(err).Msg(semLogContext)
+					return
+				}
+			}
+		}
+	*/
 }
 
 func (tp *transformerProducerImpl) requestSpans(hs []kafka.Header) (opentracing.Span, hartracing.Span) {
