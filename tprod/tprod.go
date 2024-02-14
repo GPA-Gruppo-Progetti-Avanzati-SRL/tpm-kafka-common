@@ -105,7 +105,7 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 	exitFromLoop := false
 	lbls := map[string]string{
 		"name":        tp.cfg.Name,
-		"status_code": "500",
+		"status-code": "500",
 	}
 	for e := range producer.Events() {
 
@@ -113,7 +113,8 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
 				log.Error().Err(ev.TopicPartition.Error).Int64("offset", int64(ev.TopicPartition.Offset)).Int32("partition", ev.TopicPartition.Partition).Interface("topic", ev.TopicPartition.Topic).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery failed")
-				lbls["status_code"] = "500"
+				lbls["status-code"] = "500"
+				lbls["topic-name"] = *ev.TopicPartition.Topic
 				_ = tp.produceMetric(nil, MetricMessagesToTopic, 1, lbls)
 				if err := tp.abortTransaction(nil, true); err != nil {
 					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
@@ -123,7 +124,8 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 					exitFromLoop = true
 				}
 			} else {
-				lbls["status_code"] = "200"
+				lbls["status-code"] = "200"
+				lbls["topic-name"] = *ev.TopicPartition.Topic
 				tp.produceMetric(nil, MetricMessagesToTopic, 1, lbls)
 				log.Trace().Int64("offset", int64(ev.TopicPartition.Offset)).Int32("partition", ev.TopicPartition.Partition).Interface("topic", ev.TopicPartition.Topic).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " delivery ok")
 			}

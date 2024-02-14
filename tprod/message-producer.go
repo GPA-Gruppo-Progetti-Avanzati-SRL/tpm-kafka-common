@@ -169,7 +169,8 @@ func (p *messageProducerImpl) produce2Topic(m Message) error {
 
 		if err := p.producer.Produce(km, nil); err != nil {
 			log.Error().Err(err).Msg(semLogContext)
-			p.metricsLabels["status_code"] = "500"
+			p.metricsLabels["status-code"] = "500"
+			p.metricsLabels["topic-name"] = tcfg.Name
 			p.produceMetric(nil, MetricMessagesToTopic, 1, p.metricsLabels)
 			return err
 		}
