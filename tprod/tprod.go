@@ -201,7 +201,7 @@ func (tp *transformerProducerImpl) pollLoop() {
 					tp.shutDown(err)
 				}
 
-				return
+				// return
 			} else if isMsg {
 				tp.numberOfMessages++
 				if tp.cfg.EofAfterN > 0 && tp.numberOfMessages >= tp.cfg.EofAfterN {
