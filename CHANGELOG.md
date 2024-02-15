@@ -3,8 +3,9 @@
 ## what's new
 The version v0.1.0 contains significant changes from the v0.0.x revisions.
 
-- The [TransformerProducerProcessor](tprod/processor.go) has been extended to include support for batch processing; for current processors might be enough to modify the 
-struct definition adding the `UnimplementedTransformerProducerProcessor` member.
+- The [TransformerProducerProcessor](tprod/processor.go) has been extended to include support for batch processing; in doing this there has been some reshuffling of params and new functionalities given to `tprod.Message`, 
+signature have been modified with impact on existing processors (come fields tipically found in RequestIn are now in the Message part of it); the struct `UnimplementedTransformerProducerProcessor` can be used on existing processor
+to cope with new batch methods but the signature of processMessage has been updated too
 
 ```
 type echoImpl struct {

@@ -1,23 +1,23 @@
 package echo
 
 import (
-	"bytes"
 	"errors"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
 	"strconv"
 	"strings"
 )
 
 type RequestIn struct {
-	Span            opentracing.Span      `yaml:"-" mapstructure:"-" json:"-"`
-	ContentType     string                `yaml:"content-type" mapstructure:"content-type" json:"content-type"`
-	MessageName     string                `yaml:"message-name" mapstructure:"message-name" json:"message-name"`
-	Headers         map[string]string     `yaml:"headers" mapstructure:"headers" json:"headers"`
-	Key             []byte                `yaml:"key" mapstructure:"key" json:"key"`
-	Body            []byte                `yaml:"body" mapstructure:"body" json:"body"`
+	// Span            opentracing.Span      `yaml:"-" mapstructure:"-" json:"-"`
+	ContentType string `yaml:"content-type" mapstructure:"content-type" json:"content-type"`
+	msg         tprod.Message
+	/*
+		MessageName     string                `yaml:"message-name" mapstructure:"message-name" json:"message-name"`
+		Headers         map[string]string     `yaml:"headers" mapstructure:"headers" json:"headers"`
+		Key             []byte                `yaml:"key" mapstructure:"key" json:"key"`
+		Body            []byte                `yaml:"body" mapstructure:"body" json:"body"`
+	*/
 	MessageProducer tprod.MessageProducer `yaml:"message-producer" mapstructure:"message-producer" json:"message-producer"`
 }
 
@@ -60,28 +60,30 @@ func (r *RequestIn) GetHeaderAsBool(hn string) bool {
 }
 
 func (r *RequestIn) Header(hn string) string {
-	if len(r.Headers) > 0 {
-		return r.Headers[hn]
+	if len(r.msg.Headers) > 0 {
+		return r.msg.Headers[hn]
 	}
 	return ""
 }
 
-func newRequestIn(km *kafka.Message, span opentracing.Span) (RequestIn, error) {
+func newRequestIn(m tprod.Message) (RequestIn, error) {
 
 	const semLogContext = "echo-blob::new-request-in"
 
 	var req RequestIn
 	var err error
 
-	headers := make(map[string]string)
-	for _, header := range km.Headers {
-		headers[header.Key] = string(header.Value)
-	}
-	req.Headers = headers
+	/*
+		headers := make(map[string]string)
+		for _, header := range km.Headers {
+			headers[header.Key] = string(header.Value)
+		}
+		req.Headers = headers
+	*/
 
 	var ct string
 	var ok bool
-	if ct, ok = req.Headers[KMContentType]; !ok {
+	if ct, ok = req.msg.Headers[KMContentType]; !ok {
 		ct = "application/octet-stream"
 	} else {
 		// remove the semicolon (if present to clean up the content type) to text/xml; charset=utf-8
@@ -96,31 +98,7 @@ func newRequestIn(km *kafka.Message, span opentracing.Span) (RequestIn, error) {
 	}
 
 	req.ContentType = ct
-
-	// Echo mode.... tolerant. Try to intercept the document-type
-	if ct == "text/xml" {
-		ndxStart := bytes.Index(km.Value, []byte("xmlns=\"urn:iso:std:iso:20022:tech:xsd:"))
-		if ndxStart >= 0 {
-			ndxStart += len("xmlns=\"urn:iso:std:iso:20022:tech:xsd:")
-			ndxEnd := bytes.Index(km.Value[ndxStart:], []byte("\""))
-			if ndxEnd > 0 {
-				req.MessageName = string(km.Value[ndxStart : ndxStart+ndxEnd])
-			}
-		}
-	}
-
-	req.Key = km.Key
-	req.Body = km.Value
-
-	//spanContext, _ := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
-	//log.Trace().Bool("span-from-message", spanContext != nil).Msg(semLogContext)
-	//if spanContext != nil {
-	//	req.Span = opentracing.StartSpan(spanName, opentracing.FollowsFrom(spanContext))
-	//} else {
-	//	req.Span = opentracing.StartSpan(spanName)
-	//}
-
-	req.Span = span
+	req.msg = m
 
 	if req.GetHeaderAsBool(CEIsError) {
 		err = errors.New("error triggered by header")

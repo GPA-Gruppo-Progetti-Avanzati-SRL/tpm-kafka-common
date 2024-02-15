@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/rs/zerolog/log"
 	"sync"
 )
@@ -48,17 +47,12 @@ func NewEcho(cfg *Config, wg *sync.WaitGroup) (tprod.TransformerProducer, error)
 	return &b, err
 }
 
-func (b *echoImpl) ProcessMessage(km *kafka.Message, opts ...tprod.TransformerProducerProcessorOption) ([]tprod.Message, tprod.BAMData, error) {
+func (b *echoImpl) ProcessMessage(m tprod.Message) ([]tprod.Message, tprod.BAMData, error) {
 	const semLogContext = "echo-t-prod::process"
-
-	tprodOpts := tprod.TransformerProducerOptions{}
-	for _, o := range opts {
-		o(&tprodOpts)
-	}
 
 	bamData := tprod.BAMData{}
 	bamData.AddLabel("test_label", "test_value")
-	req, err := newRequestIn(km, tprodOpts.Span)
+	req, err := newRequestIn(m)
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext + " deadletter message not resubmittable.... need a terminal dlt?")
 		return nil, bamData, err
@@ -75,34 +69,22 @@ func (b *echoImpl) ProcessMessage(km *kafka.Message, opts ...tprod.TransformerPr
 			return nil, bamData, nil
 		}
 
-		req.Headers[b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName] = fmt.Sprint(numberOfAttempts + 1)
+		req.msg.Headers[b.cfg.ProcessorConfig.NumberOfAttemptsHeaderName] = fmt.Sprint(numberOfAttempts + 1)
 	}
 
-	return []tprod.Message{{
-		Span:    req.Span,
-		ToTopic: tprod.TargetTopic{TopicType: "std"},
-		Headers: req.Headers,
-		Key:     req.Key,
-		Body:    req.Body,
-	}}, bamData, nil
+	req.msg.ToTopic = tprod.TargetTopic{TopicType: "std"}
+	return []tprod.Message{req.msg}, bamData, nil
 }
 
-func (b *echoImpl) AddMessage2Batch(km *kafka.Message, opts ...tprod.TransformerProducerProcessorOption) error {
+func (b *echoImpl) AddMessage2Batch(m tprod.Message) error {
 
 	const semLogContext = "echo-t-prod::add-to-batch"
-
-	tprodOpts := tprod.TransformerProducerOptions{}
-	for _, o := range opts {
-		o(&tprodOpts)
-	}
-
-	req, err := newRequestIn(km, tprodOpts.Span)
+	req, err := newRequestIn(m)
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext)
 		return err
 	}
 
-	req.MessageProducer = tprodOpts.MessageProducer
 	b.batch = append(b.batch, req)
 	return nil
 }
@@ -116,17 +98,11 @@ func (b *echoImpl) ProcessBatch() error {
 			log.Error().Err(err).Msg(semLogContext)
 			return err
 		}
-		err := km.MessageProducer.Produce(tprod.Message{
-			HarSpan: nil,
-			Span:    km.Span,
-			ToTopic: tprod.TargetTopic{
-				TopicType: "std",
-			},
-			Headers: nil,
-			Key:     km.Key,
-			Body:    km.Body,
-		})
-
+		km.msg.ToTopic = tprod.TargetTopic{
+			TopicType: "std",
+		}
+		err := km.MessageProducer.Produce(km.msg)
+		km.msg.Finish()
 		if err != nil {
 			log.Error().Err(err).Msg(semLogContext)
 			return err

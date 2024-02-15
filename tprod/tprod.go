@@ -223,7 +223,12 @@ func (tp *transformerProducerImpl) addMessage2Batch(km *kafka.Message) error {
 		return err
 	}
 
-	err = tp.processor.AddMessage2Batch(km, TransformerProducerProcessorWithMessageProducer(tp.msgProducer))
+	spanName := tp.cfg.Tracing.SpanName
+	if spanName == "" {
+		spanName = tp.cfg.Name
+	}
+	msgIn := NewMessage(spanName, km, MessageWithProducer(tp.msgProducer))
+	err = tp.processor.AddMessage2Batch(msgIn)
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext)
 		return err
@@ -287,11 +292,19 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
 	beginOfProcessing := time.Now()
 	sysMetricInfo := BAMData{}
 	sysMetricInfo.AddMessageHeaders(e.Headers)
-	span, harSpan := tp.requestSpans(e.Headers)
-	defer span.Finish()
-	if harSpan != nil {
-		defer harSpan.Finish()
+	/*
+		span, harSpan := tp.requestSpans(e.Headers)
+		defer span.Finish()
+		if harSpan != nil {
+			defer harSpan.Finish()
+		}
+	*/
+	spanName := tp.cfg.Tracing.SpanName
+	if spanName == "" {
+		spanName = tp.cfg.Name
 	}
+	msgIn := NewMessage(spanName, e)
+	defer msgIn.Finish()
 
 	if err = tp.beginTransaction(false); err != nil {
 		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error beginning transaction")
@@ -299,12 +312,12 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
 		return err
 	}
 
-	msg, bamData, procErr := tp.processor.ProcessMessage(e, TransformerProducerProcessorWithSpan(span), TransformerProducerProcessorWithHarSpan(harSpan))
+	msg, bamData, procErr := tp.processor.ProcessMessage(msgIn)
 	if procErr != nil {
 		log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
 		switch tp.cfg.OnError {
 		case OnErrorDeadLetter:
-			msg = []Message{{Span: span,
+			msg = []Message{{Span: msgIn.Span,
 				ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},
 				Headers: ToMessageHeaders(e.Headers),
 				Key:     e.Key,
@@ -747,45 +760,4 @@ func (tp *transformerProducerImpl) produceMetrics(elapsed float64, errParam erro
 			}
 		}
 	*/
-}
-
-func (tp *transformerProducerImpl) requestSpans(hs []kafka.Header) (opentracing.Span, hartracing.Span) {
-
-	const semLogContext = "t-prod::request-span"
-
-	spanName := tp.cfg.Tracing.SpanName
-
-	if spanName == "" {
-		spanName = tp.cfg.Name
-	}
-
-	if spanName == "" {
-		spanName = "not-assigned"
-		log.Warn().Msgf(semLogContext+" span name cannot be assigned...defaulting to '%s'", spanName)
-	}
-
-	headers := make(map[string]string)
-	for _, header := range hs {
-		headers[header.Key] = string(header.Value)
-	}
-
-	spanContext, _ := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
-	log.Trace().Bool("span-from-message", spanContext != nil).Msg(semLogContext)
-
-	var span opentracing.Span
-	if spanContext != nil {
-		span = opentracing.StartSpan(spanName, opentracing.FollowsFrom(spanContext))
-	} else {
-		span = opentracing.StartSpan(spanName)
-	}
-
-	harSpanContext, harSpanErr := hartracing.GlobalTracer().Extract("", hartracing.TextMapCarrier(headers))
-	log.Trace().Bool("har-span-from-message", harSpanErr == nil).Msg(semLogContext)
-
-	var harSpan hartracing.Span
-	if harSpanErr == nil {
-		harSpan = hartracing.GlobalTracer().StartSpan(hartracing.ChildOf(harSpanContext))
-	}
-
-	return span, harSpan
 }
