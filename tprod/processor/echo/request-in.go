@@ -17,8 +17,9 @@ type RequestIn struct {
 		Headers         map[string]string     `yaml:"headers" mapstructure:"headers" json:"headers"`
 		Key             []byte                `yaml:"key" mapstructure:"key" json:"key"`
 		Body            []byte                `yaml:"body" mapstructure:"body" json:"body"`
+		MessageProducer tprod.MessageProducer `yaml:"message-producer" mapstructure:"message-producer" json:"message-producer"`
 	*/
-	MessageProducer tprod.MessageProducer `yaml:"message-producer" mapstructure:"message-producer" json:"message-producer"`
+
 }
 
 const (

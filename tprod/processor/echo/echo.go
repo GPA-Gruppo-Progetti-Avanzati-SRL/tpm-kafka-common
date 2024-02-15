@@ -93,7 +93,7 @@ func (b *echoImpl) ProcessBatch() error {
 	const semLogContext = "echo-t-prod::process-batch"
 
 	for _, km := range b.batch {
-		if km.MessageProducer == nil {
+		if km.msg.MessageProducer == nil {
 			err := errors.New("message producer missing in request")
 			log.Error().Err(err).Msg(semLogContext)
 			return err
@@ -101,7 +101,7 @@ func (b *echoImpl) ProcessBatch() error {
 		km.msg.ToTopic = tprod.TargetTopic{
 			TopicType: "std",
 		}
-		err := km.MessageProducer.Produce(km.msg)
+		err := km.msg.MessageProducer.Produce(km.msg)
 		km.msg.Finish()
 		if err != nil {
 			log.Error().Err(err).Msg(semLogContext)
