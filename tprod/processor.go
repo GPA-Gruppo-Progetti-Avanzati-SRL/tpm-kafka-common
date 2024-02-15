@@ -10,8 +10,8 @@ import (
 
 type TransformerProducerProcessor interface {
 	ProcessMessage(km *kafka.Message, opts ...TransformerProducerProcessorOption) ([]Message, BAMData, error)
-	AddMessage2Batch(km *kafka.Message, msgProducer MessageProducer) error
-	ProcessBatch(mp MessageProducer) error
+	AddMessage2Batch(km *kafka.Message, opts ...TransformerProducerProcessorOption) error
+	ProcessBatch() error
 	Clear()
 	BatchSize() int
 }
@@ -26,14 +26,14 @@ func (b *UnimplementedTransformerProducerProcessor) ProcessMessage(km *kafka.Mes
 	panic(err)
 }
 
-func (b *UnimplementedTransformerProducerProcessor) AddMessage2Batch(km *kafka.Message, msgProducer MessageProducer) error {
+func (b *UnimplementedTransformerProducerProcessor) AddMessage2Batch(km *kafka.Message, opts ...TransformerProducerProcessorOption) error {
 	const semLogContext = "t-prod-processor::add-to-batch"
 	err := errors.New("not implemented")
 	log.Error().Err(err).Msg(semLogContext)
 	panic(err)
 }
 
-func (b *UnimplementedTransformerProducerProcessor) ProcessBatch(mp MessageProducer) error {
+func (b *UnimplementedTransformerProducerProcessor) ProcessBatch() error {
 	const semLogContext = "t-prod-processor::process-batch"
 	err := errors.New("not implemented")
 	log.Error().Err(err).Msg(semLogContext)
@@ -55,8 +55,9 @@ func (b *UnimplementedTransformerProducerProcessor) Clear() {
 }
 
 type TransformerProducerOptions struct {
-	Span    opentracing.Span
-	HarSpan hartracing.Span
+	Span            opentracing.Span
+	HarSpan         hartracing.Span
+	MessageProducer MessageProducer
 }
 
 type TransformerProducerProcessorOption func(opts *TransformerProducerOptions)
@@ -70,5 +71,11 @@ func TransformerProducerProcessorWithSpan(span opentracing.Span) TransformerProd
 func TransformerProducerProcessorWithHarSpan(span hartracing.Span) TransformerProducerProcessorOption {
 	return func(opts *TransformerProducerOptions) {
 		opts.HarSpan = span
+	}
+}
+
+func TransformerProducerProcessorWithMessageProducer(mp MessageProducer) TransformerProducerProcessorOption {
+	return func(opts *TransformerProducerOptions) {
+		opts.MessageProducer = mp
 	}
 }

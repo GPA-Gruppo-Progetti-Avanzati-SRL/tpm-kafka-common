@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"errors"
 	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -36,9 +37,8 @@ type ProcessorConfig struct {
 type echoImpl struct {
 	tprod.UnimplementedTransformerProducerProcessor
 	tprod.TransformerProducer
-	cfg *Config
-
-	batch []*kafka.Message
+	cfg   *Config
+	batch []RequestIn
 }
 
 func NewEcho(cfg *Config, wg *sync.WaitGroup) (tprod.TransformerProducer, error) {
@@ -87,25 +87,44 @@ func (b *echoImpl) ProcessMessage(km *kafka.Message, opts ...tprod.TransformerPr
 	}}, bamData, nil
 }
 
-func (b *echoImpl) AddMessage2Batch(km *kafka.Message, msgProducer tprod.MessageProducer) error {
-	// Shoild do a startSpan 	s := tp.startSpan(km)
+func (b *echoImpl) AddMessage2Batch(km *kafka.Message, opts ...tprod.TransformerProducerProcessorOption) error {
+
 	const semLogContext = "echo-t-prod::add-to-batch"
-	b.batch = append(b.batch, km)
+
+	tprodOpts := tprod.TransformerProducerOptions{}
+	for _, o := range opts {
+		o(&tprodOpts)
+	}
+
+	req, err := newRequestIn(km, tprodOpts.Span)
+	if err != nil {
+		log.Error().Err(err).Msg(semLogContext)
+		return err
+	}
+
+	req.MessageProducer = tprodOpts.MessageProducer
+	b.batch = append(b.batch, req)
 	return nil
 }
 
-func (b *echoImpl) ProcessBatch(mp tprod.MessageProducer) error {
+func (b *echoImpl) ProcessBatch() error {
 	const semLogContext = "echo-t-prod::process-batch"
+
 	for _, km := range b.batch {
-		err := mp.Produce(tprod.Message{
+		if km.MessageProducer == nil {
+			err := errors.New("message producer missing in request")
+			log.Error().Err(err).Msg(semLogContext)
+			return err
+		}
+		err := km.MessageProducer.Produce(tprod.Message{
 			HarSpan: nil,
-			Span:    nil,
+			Span:    km.Span,
 			ToTopic: tprod.TargetTopic{
 				TopicType: "std",
 			},
 			Headers: nil,
 			Key:     km.Key,
-			Body:    km.Value,
+			Body:    km.Body,
 		})
 
 		if err != nil {

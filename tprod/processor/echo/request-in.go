@@ -3,6 +3,7 @@ package echo
 import (
 	"bytes"
 	"errors"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/tprod"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
@@ -11,12 +12,13 @@ import (
 )
 
 type RequestIn struct {
-	Span        opentracing.Span  `yaml:"-" mapstructure:"-" json:"-"`
-	ContentType string            `yaml:"content-type" mapstructure:"content-type" json:"content-type"`
-	MessageName string            `yaml:"message-name" mapstructure:"message-name" json:"message-name"`
-	Headers     map[string]string `yaml:"headers" mapstructure:"headers" json:"headers"`
-	Key         []byte            `yaml:"key" mapstructure:"key" json:"key"`
-	Body        []byte            `yaml:"body" mapstructure:"body" json:"body"`
+	Span            opentracing.Span      `yaml:"-" mapstructure:"-" json:"-"`
+	ContentType     string                `yaml:"content-type" mapstructure:"content-type" json:"content-type"`
+	MessageName     string                `yaml:"message-name" mapstructure:"message-name" json:"message-name"`
+	Headers         map[string]string     `yaml:"headers" mapstructure:"headers" json:"headers"`
+	Key             []byte                `yaml:"key" mapstructure:"key" json:"key"`
+	Body            []byte                `yaml:"body" mapstructure:"body" json:"body"`
+	MessageProducer tprod.MessageProducer `yaml:"message-producer" mapstructure:"message-producer" json:"message-producer"`
 }
 
 const (
@@ -127,8 +129,10 @@ func newRequestIn(km *kafka.Message, span opentracing.Span) (RequestIn, error) {
 	return req, err
 }
 
+/*
 func (r *RequestIn) Finish() {
 	if r.Span != nil {
 		r.Span.Finish()
 	}
 }
+*/

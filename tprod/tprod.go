@@ -223,7 +223,7 @@ func (tp *transformerProducerImpl) addMessage2Batch(km *kafka.Message) error {
 		return err
 	}
 
-	err = tp.processor.AddMessage2Batch(km, tp.msgProducer)
+	err = tp.processor.AddMessage2Batch(km, TransformerProducerProcessorWithMessageProducer(tp.msgProducer))
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext)
 		return err
@@ -258,7 +258,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 		return nil
 	}
 
-	if err := tp.processor.ProcessBatch(tp.msgProducer); err != nil {
+	if err := tp.processor.ProcessBatch(); err != nil {
 		_ = tp.abortTransaction(context.Background(), false)
 		return err
 	} else {
