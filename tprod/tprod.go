@@ -199,9 +199,8 @@ func (tp *transformerProducerImpl) pollLoop() {
 				if tp.exitOnError(semLogContext, err) {
 					ticker.Stop()
 					tp.shutDown(err)
+					return
 				}
-
-				// return
 			} else if isMsg {
 				tp.numberOfMessages++
 				if tp.cfg.EofAfterN > 0 && tp.numberOfMessages >= tp.cfg.EofAfterN {
