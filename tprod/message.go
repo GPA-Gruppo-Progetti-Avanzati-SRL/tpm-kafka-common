@@ -133,7 +133,6 @@ func requestSpans(spanName string, hs []kafka.Header) (opentracing.Span, hartrac
 	}
 
 	spanContext, _ := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
-	log.Trace().Bool("span-from-message", spanContext != nil).Msg(semLogContext)
 
 	var span opentracing.Span
 	if spanContext != nil {
@@ -143,7 +142,7 @@ func requestSpans(spanName string, hs []kafka.Header) (opentracing.Span, hartrac
 	}
 
 	harSpanContext, harSpanErr := hartracing.GlobalTracer().Extract("", hartracing.TextMapCarrier(headers))
-	log.Trace().Bool("har-span-from-message", harSpanErr == nil).Msg(semLogContext)
+	// log.Trace().Bool("span-from-message", spanContext != nil).Bool("har-span-from-message", harSpanErr == nil).Msg(semLogContext)
 
 	var harSpan hartracing.Span
 	if harSpanErr == nil {

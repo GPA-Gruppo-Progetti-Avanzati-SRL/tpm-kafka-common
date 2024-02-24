@@ -479,7 +479,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 		}
 	case kafka.Error:
 		// Errors should generally be considered as informational, the client will try to automatically recover
-		log.Error().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " errors received")
+		log.Info().Str("error", e.Error()).Int("err-code", int(e.Code())).Bool("tx-requires-abort", e.TxnRequiresAbort()).Bool("is-retriable", e.IsRetriable()).Bool("is-fatal", e.IsFatal()).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " errors received")
 	case kafka.OffsetsCommitted:
 		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " committed offsets")
 	default:
