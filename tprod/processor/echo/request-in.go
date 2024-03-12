@@ -71,7 +71,7 @@ func newRequestIn(m tprod.Message) (RequestIn, error) {
 
 	const semLogContext = "echo-blob::new-request-in"
 
-	var req RequestIn
+	req := RequestIn{msg: m}
 	var err error
 
 	/*
@@ -99,7 +99,6 @@ func newRequestIn(m tprod.Message) (RequestIn, error) {
 	}
 
 	req.ContentType = ct
-	req.msg = m
 
 	if req.GetHeaderAsBool(CEIsError) {
 		err = errors.New("error triggered by header")
