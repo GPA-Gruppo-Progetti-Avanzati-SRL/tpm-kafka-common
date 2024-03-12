@@ -70,6 +70,18 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		AcksPropertyName:             lks.cfg.Producer.Acks,
 	}
 
+	if lks.cfg.Producer.SocketKeepaliveEnable {
+		_ = cfgMap2.SetKey(SocketKeepaliveEnable, lks.cfg.Producer.SocketKeepaliveEnable)
+	}
+
+	if lks.cfg.Producer.RequestTimeoutMs > 0 {
+		_ = cfgMap2.SetKey(RequestTimeoutMs, lks.cfg.Producer.RequestTimeoutMs)
+	}
+
+	if lks.cfg.Producer.MetadataMaxAgeMs > 0 {
+		_ = cfgMap2.SetKey(MetadataMaxAgeMs, lks.cfg.Producer.MetadataMaxAgeMs)
+	}
+
 	if lks.cfg.Producer.DeliveryTimeout != 0 {
 		_ = cfgMap2.SetKey(DeliveryTimeoutMs, int(lks.cfg.Producer.DeliveryTimeout.Milliseconds()))
 	}
@@ -154,6 +166,18 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 		EnableAutoCommitPropertyName:             autoCommit,
 		IsolationLevelPropertyName:               lks.cfg.Consumer.IsolationLevel,
 		GoApplicationRebalanceEnablePropertyName: true,
+	}
+
+	if lks.cfg.Consumer.SocketKeepaliveEnable {
+		_ = cfgMap.SetKey(SocketKeepaliveEnable, lks.cfg.Consumer.SocketKeepaliveEnable)
+	}
+
+	if lks.cfg.Consumer.RequestTimeoutMs > 0 {
+		_ = cfgMap.SetKey(RequestTimeoutMs, lks.cfg.Consumer.RequestTimeoutMs)
+	}
+
+	if lks.cfg.Consumer.MetadataMaxAgeMs > 0 {
+		_ = cfgMap.SetKey(MetadataMaxAgeMs, lks.cfg.Consumer.MetadataMaxAgeMs)
 	}
 
 	if lks.cfg.Consumer.EnablePartitionEOF {

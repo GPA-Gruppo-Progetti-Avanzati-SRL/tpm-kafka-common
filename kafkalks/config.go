@@ -27,6 +27,9 @@ const (
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
 	DeliveryTimeoutMs                            = "delivery.timeout.ms"
 	MessageSendMaxRetries                        = "message.send.max.retries"
+	SocketKeepaliveEnable                        = "socket.keepalive.enable" // true
+	MetadataMaxAgeMs                             = "metadata.max.age.ms"     // 180000
+	RequestTimeoutMs                             = "request.timeout.ms"      //60000
 
 	CommitModeAuto        = "auto"
 	CommitModeManual      = "manual"
@@ -35,15 +38,18 @@ const (
 
 type ConsumerConfig struct {
 	// Consumer related configs
-	IsolationLevel     string `mapstructure:"isolation-level" json:"isolation-level" yaml:"isolation-level"`
-	MaxPollRecords     int    `mapstructure:"max-poll-records" json:"max-poll-records" yaml:"max-poll-records"`
-	AutoOffsetReset    string `mapstructure:"auto-offset-reset" json:"auto-offset-reset" yaml:"auto-offset-reset"`
-	SessionTimeoutMs   int    `mapstructure:"session-timeout-ms" json:"session-timeout-ms" yaml:"session-timeout-ms"`
-	FetchMinBytes      int    `mapstructure:"fetch-min-bytes" json:"fetch-min-bytes" yaml:"fetch-min-bytes"`
-	FetchMaxBytes      int    `mapstructure:"fetch-max-bytes" json:"fetch-max-bytes" yaml:"fetch-max-bytes"`
-	Delay              int    `mapstructure:"delay" json:"delay" yaml:"delay"`
-	MaxRetry           int    `mapstructure:"max-retry" json:"max-retry" yaml:"max-retry"`
-	EnablePartitionEOF bool   `mapstructure:"enable-partition-eof" json:"enable-partition-eof" yaml:"enable-partition-eof"`
+	IsolationLevel        string `mapstructure:"isolation-level" json:"isolation-level" yaml:"isolation-level"`
+	MaxPollRecords        int    `mapstructure:"max-poll-records" json:"max-poll-records" yaml:"max-poll-records"`
+	AutoOffsetReset       string `mapstructure:"auto-offset-reset" json:"auto-offset-reset" yaml:"auto-offset-reset"`
+	SessionTimeoutMs      int    `mapstructure:"session-timeout-ms" json:"session-timeout-ms" yaml:"session-timeout-ms"`
+	FetchMinBytes         int    `mapstructure:"fetch-min-bytes" json:"fetch-min-bytes" yaml:"fetch-min-bytes"`
+	FetchMaxBytes         int    `mapstructure:"fetch-max-bytes" json:"fetch-max-bytes" yaml:"fetch-max-bytes"`
+	Delay                 int    `mapstructure:"delay" json:"delay" yaml:"delay"`
+	MaxRetry              int    `mapstructure:"max-retry" json:"max-retry" yaml:"max-retry"`
+	EnablePartitionEOF    bool   `mapstructure:"enable-partition-eof" json:"enable-partition-eof" yaml:"enable-partition-eof"`
+	MetadataMaxAgeMs      int    `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
+	SocketKeepaliveEnable bool   `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
+	RequestTimeoutMs      int    `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
 }
 
 type ProducerConfig struct {
@@ -54,6 +60,9 @@ type ProducerConfig struct {
 	FlushTimeout          time.Duration                   `mapstructure:"flush-timeout"`
 	MessageSendMaxRetries int                             `mapstructure:"max-retries"`
 	AsyncDeliveryMetrics  promutil.MetricsConfigReference `mapstructure:"async-delivery-metrics,omitempty" yaml:"async-delivery-metrics,omitempty" json:"async-delivery-metrics,omitempty"`
+	MetadataMaxAgeMs      int                             `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
+	SocketKeepaliveEnable bool                            `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
+	RequestTimeoutMs      int                             `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
 }
 
 var DefaultProducerMetrics = promutil.MetricsConfigReference{

@@ -1,10 +1,22 @@
 # tpm-kafka-common 
 
 ## what's new
+
+### 2024-03-12
+Added params to config: metadata-max-age-ms, socket-keepalive-enable, request-timeout-ms to address issues when connecting to Azure Event-Hub.
+Params that are 0 or bool that are false are not set, and they keep their default values.
+
+In the EventHub case values should be: 
+
+- socket-keepalive-enable: true
+- metadata-max-age-ms: 180000
+- request-timeout-ms: 60000
+
+### version v0.1.0
 The version v0.1.0 contains significant changes from the v0.0.x revisions.
 
 - The [TransformerProducerProcessor](tprod/processor.go) has been extended to include support for batch processing; in doing this there has been some reshuffling of params and new functionalities given to `tprod.Message`, 
-signature have been modified with impact on existing processors (come fields tipically found in RequestIn are now in the Message part of it); the struct `UnimplementedTransformerProducerProcessor` can be used on existing processor
+signature have been modified with impact on existing processors (some fields tipically found in RequestIn are now in the Message part of it); the struct `UnimplementedTransformerProducerProcessor` can be used on existing processor
 to cope with new batch methods but the signature of processMessage has been updated too
 
 ```
