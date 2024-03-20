@@ -11,29 +11,34 @@ const (
 	AcksPropertyName                             = "acks"
 	AutoOffsetResetPropertyName                  = "auto.offset.reset"
 	BootstrapServersPropertyName                 = "bootstrap.servers"
+	CommitModeAuto                               = "auto"
+	CommitModeManual                             = "manual"
+	CommitModeTransaction                        = "tx"
+	ConnectionsMaxIdleMs                         = "connections.max.idle.ms"
+	DeliveryTimeoutMs                            = "delivery.timeout.ms"
 	EnableAutoCommitPropertyName                 = "enable.auto.commit"
 	EnablePartitionEOFPropertyName               = "enable.partition.eof"
 	EnableSSLCertificateVerificationPropertyName = "enable.ssl.certificate.verification"
 	GoApplicationRebalanceEnablePropertyName     = "go.application.rebalance.enable"
 	GroupIdPropertyName                          = "group.id"
+	HeartBeatIntervalMs                          = "heartbeat.interval.ms"
 	IsolationLevelPropertyName                   = "isolation.level"
+	LingerMs                                     = "linger.ms"
+	MaxPollIntervalMs                            = "max.poll.interval.ms"
+	MessageSendMaxRetries                        = "message.send.max.retries"
+	MetadataMaxAgeMs                             = "metadata.max.age.ms" // 180000
+	MetadataMaxIdleMs                            = "metadata.max.idle.ms"
+	RequestTimeoutMs                             = "request.timeout.ms" //60000
+	Retries                                      = "retries"
 	SASLMechanismPropertyName                    = "sasl.mechanism"
 	SASLPasswordPropertyName                     = "sasl.password"
 	SASLUsernamePropertyName                     = "sasl.username"
 	SSLCaLocationPropertyName                    = "ssl.ca.location"
 	SecurityProtocolPropertyName                 = "security.protocol"
 	SessionTimeOutMsPropertyName                 = "session.timeout.ms"
+	SocketKeepaliveEnable                        = "socket.keepalive.enable" // true
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
-	DeliveryTimeoutMs                            = "delivery.timeout.ms"
-	MessageSendMaxRetries                        = "message.send.max.retries"
-	SocketKeepaliveEnable                        = "socket.keepalive.enable" // true
-	MetadataMaxAgeMs                             = "metadata.max.age.ms"     // 180000
-	RequestTimeoutMs                             = "request.timeout.ms"      //60000
-
-	CommitModeAuto        = "auto"
-	CommitModeManual      = "manual"
-	CommitModeTransaction = "tx"
 )
 
 type ConsumerConfig struct {
@@ -49,7 +54,9 @@ type ConsumerConfig struct {
 	EnablePartitionEOF    bool   `mapstructure:"enable-partition-eof" json:"enable-partition-eof" yaml:"enable-partition-eof"`
 	MetadataMaxAgeMs      int    `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
 	SocketKeepaliveEnable bool   `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
-	RequestTimeoutMs      int    `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
+	// RequestTimeoutMs      int    `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
+	ConnectionsMaxIdleMs int `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
+	HeartBeatIntervalMs  int `mapstructure:"heartbeat-interval-ms,omitempty" json:"heartbeat-interval-ms,omitempty" yaml:"heartbeat-interval-ms,omitempty"`
 }
 
 type ProducerConfig struct {
@@ -63,6 +70,8 @@ type ProducerConfig struct {
 	MetadataMaxAgeMs      int                             `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
 	SocketKeepaliveEnable bool                            `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
 	RequestTimeoutMs      int                             `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
+	ConnectionsMaxIdleMs  int                             `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
+	MetadataMaxIdleMs     int                             `mapstructure:"metadata-max-idle-ms,omitempty" json:"metadata-max-idle-ms,omitempty" yaml:"metadata-max-idle-ms,omitempty"`
 }
 
 var DefaultProducerMetrics = promutil.MetricsConfigReference{

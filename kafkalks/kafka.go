@@ -82,6 +82,14 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		_ = cfgMap2.SetKey(MetadataMaxAgeMs, lks.cfg.Producer.MetadataMaxAgeMs)
 	}
 
+	if lks.cfg.Producer.ConnectionsMaxIdleMs > 0 {
+		_ = cfgMap2.SetKey(ConnectionsMaxIdleMs, lks.cfg.Producer.ConnectionsMaxIdleMs)
+	}
+
+	if lks.cfg.Producer.MetadataMaxIdleMs > 0 {
+		_ = cfgMap2.SetKey(MetadataMaxIdleMs, lks.cfg.Producer.MetadataMaxIdleMs)
+	}
+
 	if lks.cfg.Producer.DeliveryTimeout != 0 {
 		_ = cfgMap2.SetKey(DeliveryTimeoutMs, int(lks.cfg.Producer.DeliveryTimeout.Milliseconds()))
 	}
@@ -172,12 +180,22 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 		_ = cfgMap.SetKey(SocketKeepaliveEnable, lks.cfg.Consumer.SocketKeepaliveEnable)
 	}
 
+	/* Seems to be producer only
 	if lks.cfg.Consumer.RequestTimeoutMs > 0 {
 		_ = cfgMap.SetKey(RequestTimeoutMs, lks.cfg.Consumer.RequestTimeoutMs)
 	}
+	*/
 
 	if lks.cfg.Consumer.MetadataMaxAgeMs > 0 {
 		_ = cfgMap.SetKey(MetadataMaxAgeMs, lks.cfg.Consumer.MetadataMaxAgeMs)
+	}
+
+	if lks.cfg.Consumer.ConnectionsMaxIdleMs > 0 {
+		_ = cfgMap.SetKey(ConnectionsMaxIdleMs, lks.cfg.Consumer.ConnectionsMaxIdleMs)
+	}
+
+	if lks.cfg.Consumer.HeartBeatIntervalMs > 0 {
+		_ = cfgMap.SetKey(HeartBeatIntervalMs, lks.cfg.Consumer.HeartBeatIntervalMs)
 	}
 
 	if lks.cfg.Consumer.EnablePartitionEOF {
