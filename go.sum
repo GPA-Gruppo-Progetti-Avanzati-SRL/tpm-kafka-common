@@ -3,8 +3,8 @@ cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.35 h1:yo07si9iCqSEkhFvhpezDeabEmnslqnm0NfFQtw6b1c=
-github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.35/go.mod h1:tKUvwyMmO9MjzoqSPIMbmoYjc3o076vkpLfPj4UfXns=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.37 h1:xA51uz/dwRYYPbqkW5B3jKmb0fZlXwu83XifV58OI0U=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.37/go.mod h1:tKUvwyMmO9MjzoqSPIMbmoYjc3o076vkpLfPj4UfXns=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.33 h1:2Mt044MfWOkvn02EULfDMde19hmbrYQy8bTBN6seTrQ=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.0.33/go.mod h1:SxnaLI1PuezUr+P6PiuDLmFNaSaRik4J0zfspvKOfXI=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2 h1:5IcZpTvzydCQeHzK4Ef/D5rrSqwxob0t8PQPMybUNFM=

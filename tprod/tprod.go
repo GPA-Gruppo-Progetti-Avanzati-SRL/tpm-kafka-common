@@ -168,19 +168,21 @@ func (tp *transformerProducerImpl) pollLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			beginOfProcessing := time.Now()
-			batchSize := tp.processor.BatchSize()
-			err := tp.processBatch(context.Background())
-			if batchSize > 0 {
-				metricGroup := tp.produceMetric(nil, MetricBatches, 1, tp.metricLabels)
-				metricGroup = tp.produceMetric(metricGroup, MetricBatchSize, float64(batchSize), tp.metricLabels)
-				metricGroup = tp.produceMetric(metricGroup, MetricBatchDuration, time.Since(beginOfProcessing).Seconds(), tp.metricLabels)
-			}
-			if err != nil && tp.cfg.OnError == OnErrorExit {
-				_ = tp.produceMetric(nil, MetricBatchErrors, 1, tp.metricLabels)
-				ticker.Stop()
-				tp.shutDown(err)
-				return
+			if tp.cfg.WorkMode == WorkModeBatch {
+				beginOfProcessing := time.Now()
+				batchSize := tp.processor.BatchSize()
+				err := tp.processBatch(context.Background())
+				if batchSize > 0 {
+					metricGroup := tp.produceMetric(nil, MetricBatches, 1, tp.metricLabels)
+					metricGroup = tp.produceMetric(metricGroup, MetricBatchSize, float64(batchSize), tp.metricLabels)
+					metricGroup = tp.produceMetric(metricGroup, MetricBatchDuration, time.Since(beginOfProcessing).Seconds(), tp.metricLabels)
+				}
+				if err != nil && tp.cfg.OnError == OnErrorExit {
+					_ = tp.produceMetric(nil, MetricBatchErrors, 1, tp.metricLabels)
+					ticker.Stop()
+					tp.shutDown(err)
+					return
+				}
 			}
 		case <-tp.quitc:
 			log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " terminating poll loop")
