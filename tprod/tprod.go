@@ -285,7 +285,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 	return nil
 }
 
-func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
+func (tp *transformerProducerImpl) processMessage(e *kafka.Message) (BAMData, error) {
 	const semLogContext = "t-prod::process-message"
 
 	var err error
@@ -293,6 +293,8 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
 	beginOfProcessing := time.Now()
 	sysMetricInfo := BAMData{}
 	sysMetricInfo.AddMessageHeaders(e.Headers)
+	sysMetricInfo.AddLabels(tp.metricLabels)
+
 	/*
 		span, harSpan := tp.requestSpans(e.Headers)
 		defer span.Finish()
@@ -310,10 +312,11 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
 	if err = tp.beginTransaction(false); err != nil {
 		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error beginning transaction")
 		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo)
-		return err
+		return sysMetricInfo, err
 	}
 
 	msg, bamData, procErr := tp.processor.ProcessMessage(msgIn)
+	sysMetricInfo.AddBAMData(bamData)
 	if procErr != nil {
 		log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
 		switch tp.cfg.OnError {
@@ -327,7 +330,7 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
 		default:
 			_ = tp.abortTransaction(context.Background(), true)
 			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), procErr, sysMetricInfo.AddBAMData(bamData))
-			return procErr
+			return sysMetricInfo, procErr
 		}
 	}
 
@@ -336,17 +339,17 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) error {
 		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error producing output message")
 		_ = tp.abortTransaction(context.Background(), true)
 		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
-		return err
+		return sysMetricInfo, err
 	}
 
 	err = tp.commitTransaction(context.Background(), true)
 	if err != nil {
 		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
-		return err
+		return sysMetricInfo, err
 	}
 
 	tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), util.CoalesceError(procErr, err), sysMetricInfo.AddBAMData(bamData))
-	return nil
+	return sysMetricInfo, nil
 }
 
 func (tp *transformerProducerImpl) shutDown(err error) {
@@ -414,9 +417,11 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 			err = tp.addMessage2Batch(e)
 			metricGroup = tp.produceMetric(metricGroup, MetricMessages, 1, tp.metricLabels)
 		} else {
-			err = tp.processMessage(e)
-			metricGroup = tp.produceMetric(metricGroup, MetricMessages, 1, tp.metricLabels)
-			metricGroup = tp.produceMetric(metricGroup, MetricMessageDuration, time.Since(beginOfProcessing).Seconds(), tp.metricLabels)
+			var bamData BAMData
+			bamData, err = tp.processMessage(e)
+
+			metricGroup = tp.produceMetric(metricGroup, MetricMessages, 1, bamData.Labels)
+			metricGroup = tp.produceMetric(metricGroup, MetricMessageDuration, time.Since(beginOfProcessing).Seconds(), bamData.Labels)
 		}
 
 		if err != nil {

@@ -33,6 +33,12 @@ func (bd *BAMData) Set(mid string, val float64) {
 	bd.MetricsData = append(bd.MetricsData, MetricData{MetricId: mid, Value: val})
 }
 
+func (bd *BAMData) AddLabels(lbls map[string]string) {
+	for ln, lv := range lbls {
+		bd.AddLabel(ln, lv)
+	}
+}
+
 func (bd *BAMData) AddLabel(lbl, val string) {
 	if bd.Labels == nil {
 		bd.Labels = make(map[string]string)
