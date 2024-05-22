@@ -2,7 +2,7 @@ package reworkdlt
 
 import (
 	"bytes"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
 	"strconv"
