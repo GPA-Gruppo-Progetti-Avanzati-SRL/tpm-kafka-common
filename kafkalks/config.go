@@ -1,10 +1,11 @@
 package kafkalks
 
 import (
+	"time"
+
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 const (
@@ -39,6 +40,7 @@ const (
 	SocketKeepaliveEnable                        = "socket.keepalive.enable" // true
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
+	Debug                                        = "debug"
 )
 
 type ConsumerConfig struct {
@@ -102,6 +104,7 @@ type Config struct {
 	SASL             SaslCfg        `mapstructure:"sasl" json:"sasl" yaml:"sasl"`
 	Consumer         ConsumerConfig `mapstructure:"consumer" json:"consumer" yaml:"consumer"`
 	Producer         ProducerConfig `mapstructure:"producer" json:"producer" yaml:"producer"`
+	Debug            string         `mapstructure:"debug" json:"debug" yaml:"debug"`
 	//TickInterval     string         `mapstructure:"tick-interval"`
 	//Exit             struct {
 	//	OnFail bool `mapstructure:"on-fail"`

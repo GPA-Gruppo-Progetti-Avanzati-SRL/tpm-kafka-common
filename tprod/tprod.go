@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"sync"
+	"time"
+
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive/hartracing"
@@ -11,9 +15,6 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
-	"io"
-	"sync"
-	"time"
 )
 
 const (
@@ -66,6 +67,9 @@ func (tp *transformerProducerImpl) SetParent(s Server) {
 }
 
 func (tp *transformerProducerImpl) Start() {
+
+	time.Sleep(time.Millisecond * time.Duration(tp.cfg.StartDelay))
+
 	const semLogContext = "t-prod::start"
 	log.Info().Int("num-t-prods", len(tp.producers)).Msg(semLogContext)
 

@@ -2,11 +2,12 @@ package tprod
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"time"
 )
 
 const (
@@ -62,6 +63,7 @@ type TransformerProducerConfig struct {
 	FromTopic    ConfigTopic                      `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
 	ToTopics     []ConfigTopic                    `yaml:"to-topics,omitempty" mapstructure:"to-topics,omitempty" json:"to-topics,omitempty"`
 	Tracing      TracingCfg                       `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
+	StartDelay   int                              `yaml:"start-delay" mapstructure:"start-delay" json:"start-delay"`
 }
 
 type ConfigTopic struct {

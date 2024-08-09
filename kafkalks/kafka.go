@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+	"sync"
+
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"net/http"
-	"strings"
-	"sync"
 )
 
 /*
@@ -68,6 +69,10 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 	cfgMap2 := kafka.ConfigMap{
 		BootstrapServersPropertyName: lks.cfg.BootstrapServers,
 		AcksPropertyName:             lks.cfg.Producer.Acks,
+	}
+
+	if lks.cfg.Debug != "" {
+		_ = cfgMap2.SetKey(Debug, lks.cfg.Debug)
 	}
 
 	if lks.cfg.Producer.SocketKeepaliveEnable {
