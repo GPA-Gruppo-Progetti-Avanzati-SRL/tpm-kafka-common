@@ -145,10 +145,15 @@ func (p *messageProducerImpl) produce2Topic(m Message) error {
 	} else {
 		// _ = level.Debug(p.logger).Log(system.DefaultLogMessageField, "producing message", "topic", tcfg.Name)
 
+		var hdrs []kafka.Header
+		for n, h := range m.Headers {
+			hdrs = append(hdrs, kafka.Header{Key: n, Value: []byte(h)})
+		}
 		km := &kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &tcfg.Name, Partition: kafka.PartitionAny},
 			Key:            m.Key,
 			Value:          m.Body,
+			Headers:        hdrs,
 		}
 
 		if m.Span != nil {

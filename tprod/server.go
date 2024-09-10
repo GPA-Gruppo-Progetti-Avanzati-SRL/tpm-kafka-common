@@ -54,8 +54,20 @@ func (s *server) Add(tp TransformerProducer) {
 
 func (s *server) Start() {
 	const semLogContext = "t-prod-server::start"
+
+	var startDelay time.Duration
+	if s.cfg.StartDelay > 0 {
+		startDelay = time.Millisecond * time.Duration(s.cfg.StartDelay)
+	}
+
 	log.Info().Msg(semLogContext)
-	for _, tp := range s.transformerProducer {
+	for i, tp := range s.transformerProducer {
+		startDelay = time.Millisecond * time.Duration(s.cfg.StartDelay*(i+1))
+		log.Info().Dur("delay", startDelay).Str("processor", tp.Name()).Msg(semLogContext + " - starting processor...")
+		if startDelay > 0 {
+			time.Sleep(startDelay)
+		}
+
 		tp1 := tp
 		go tp1.Start()
 	}

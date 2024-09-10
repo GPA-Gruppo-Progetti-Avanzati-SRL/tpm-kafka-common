@@ -31,6 +31,7 @@ type TransformerProducer interface {
 	Start()
 	Close()
 	SetParent(s Server)
+	Name() string
 }
 
 type transformerProducerImpl struct {
@@ -61,12 +62,21 @@ const (
 	DefaultPoolLoopTickInterval = 200 * time.Millisecond
 )
 
+func (tp *transformerProducerImpl) Name() string {
+	return tp.cfg.Name
+}
+
 func (tp *transformerProducerImpl) SetParent(s Server) {
 	tp.parent = s
 }
 
 func (tp *transformerProducerImpl) Start() {
 	const semLogContext = "t-prod::start"
+
+	if tp.cfg.StartDelay > 0 {
+		time.Sleep(time.Millisecond * time.Duration(tp.cfg.StartDelay))
+	}
+
 	log.Info().Int("num-t-prods", len(tp.producers)).Msg(semLogContext)
 
 	// Add to wait group

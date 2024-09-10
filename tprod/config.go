@@ -23,6 +23,7 @@ type ServerConfig struct {
 	// Exit              ConfigExitPolicy `yaml:"exit" mapstructure:"exit" json:"exit"`
 	OnWorkerTerminated string `yaml:"on-worker-terminated,omitempty" mapstructure:"on-worker-terminated,omitempty" json:"on-worker-terminated,omitempty"` // Possible values: dead-letter, exit
 	EnabledProcessors  string `yaml:"enabled-processors,omitempty" mapstructure:"enabled-processors,omitempty" json:"enabled-processors,omitempty"`
+	StartDelay         int    `yaml:"start-delay-ms" mapstructure:"start-delay-ms" json:"start-delay-ms"`
 }
 
 func (sCfg *ServerConfig) IsProcessorEnabled(n string) bool {
@@ -62,6 +63,7 @@ type TransformerProducerConfig struct {
 	FromTopic    ConfigTopic                      `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
 	ToTopics     []ConfigTopic                    `yaml:"to-topics,omitempty" mapstructure:"to-topics,omitempty" json:"to-topics,omitempty"`
 	Tracing      TracingCfg                       `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
+	StartDelay   int                              `yaml:"start-delay" mapstructure:"start-delay" json:"start-delay"`
 }
 
 type ConfigTopic struct {

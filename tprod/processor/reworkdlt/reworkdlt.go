@@ -27,6 +27,10 @@ func NewReworkDlt(cfg *Config) (tprod.TransformerProducer, error) {
 	return &b, err
 }
 
+func (tp *reworkDltImpl) Name() string {
+	return tp.cfg.WorkerConfig.TransformerProducerConfig.Name
+}
+
 func (rwd *reworkDltImpl) SetParent(s tprod.Server) {
 	rwd.parent = s
 }

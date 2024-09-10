@@ -70,6 +70,10 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		AcksPropertyName:             lks.cfg.Producer.Acks,
 	}
 
+	if lks.cfg.Debug != "" {
+		_ = cfgMap2.SetKey(Debug, lks.cfg.Debug)
+	}
+
 	if lks.cfg.Producer.SocketKeepaliveEnable {
 		_ = cfgMap2.SetKey(SocketKeepaliveEnable, lks.cfg.Producer.SocketKeepaliveEnable)
 	}
