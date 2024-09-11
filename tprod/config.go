@@ -89,7 +89,7 @@ type ConfigTopic struct {
 
 func ErrorPolicyForError(err error, onErrors []OnErrorPolicy) string {
 
-	level := OnErrorLevelFatal
+	level := OnErrorLevelError
 	var tprodErr *TransformerProducerError
 	if errors.As(err, &tprodErr) {
 		level = tprodErr.Level
