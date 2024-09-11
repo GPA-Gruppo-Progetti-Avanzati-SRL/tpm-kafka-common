@@ -87,7 +87,7 @@ type ConfigTopic struct {
 	MuteOn         bool      `yaml:"mute-on,omitempty" mapstructure:"mute-on,omitempty" json:"mute-on,omitempty"`
 }
 
-func (cfg *TransformerProducerConfig) ErrorPolicyForError(err error) string {
+func ErrorPolicyForError(err error, onErrors []OnErrorPolicy) string {
 
 	level := OnErrorLevelFatal
 	var tprodErr *TransformerProducerError
@@ -96,7 +96,7 @@ func (cfg *TransformerProducerConfig) ErrorPolicyForError(err error) string {
 	}
 
 	foundExit := false
-	for _, c := range cfg.OnErrors {
+	for _, c := range onErrors {
 		if c.ErrLevel == level {
 			return c.Policy
 		}
