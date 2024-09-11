@@ -34,6 +34,13 @@ type TransformerProducer interface {
 	Name() string
 }
 
+type TransformerProducerError struct {
+	Level string
+	Err   error
+}
+
+func (e *TransformerProducerError) Error() string { return e.Level + ": " + e.Err.Error() }
+
 type transformerProducerImpl struct {
 	cfg *TransformerProducerConfig
 
@@ -159,7 +166,7 @@ func (tp *transformerProducerImpl) exitOnError(semLogContext string, err error) 
 				return true
 			}
 		} else {
-			if tp.cfg.OnError == OnErrorExit {
+			if tp.cfg.ErrorPolicyForError(err) == OnErrorExit {
 				log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting on error")
 				return true
 			}
@@ -187,7 +194,7 @@ func (tp *transformerProducerImpl) pollLoop() {
 					metricGroup = tp.produceMetric(metricGroup, MetricBatchSize, float64(batchSize), tp.metricLabels)
 					metricGroup = tp.produceMetric(metricGroup, MetricBatchDuration, time.Since(beginOfProcessing).Seconds(), tp.metricLabels)
 				}
-				if err != nil && tp.cfg.OnError == OnErrorExit {
+				if err != nil && tp.cfg.ErrorPolicyForError(err) == OnErrorExit {
 					_ = tp.produceMetric(nil, MetricBatchErrors, 1, tp.metricLabels)
 					ticker.Stop()
 					tp.shutDown(err)
@@ -329,7 +336,7 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) (BAMData, er
 	sysMetricInfo.AddBAMData(bamData)
 	if procErr != nil {
 		log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
-		switch tp.cfg.OnError {
+		switch tp.cfg.ErrorPolicyForError(err) {
 		case OnErrorDeadLetter:
 			msg = []Message{{Span: msgIn.Span,
 				ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},

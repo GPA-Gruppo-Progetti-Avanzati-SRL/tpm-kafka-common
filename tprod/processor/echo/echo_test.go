@@ -136,9 +136,12 @@ func TestMain(m *testing.M) {
 			Name:         "tp-echo",
 			WorkMode:     tprod.WorkModeBatch,
 			TickInterval: time.Millisecond * 400,
-			OnError:      tprod.OnErrorDeadLetter,
-			OnEof:        "", // tprod.OnEofExit,
-			EofAfterN:    0,
+			OnErrors: []tprod.OnErrorPolicy{
+				{tprod.OnErrorLevelFatal, tprod.OnErrorDeadLetter},
+				{tprod.OnErrorLevelError, tprod.OnErrorDeadLetter},
+			},
+			OnEof:     "", // tprod.OnEofExit,
+			EofAfterN: 0,
 			RefMetrics: &promutil.MetricsConfigReference{
 				GId: "tp-echo",
 			},

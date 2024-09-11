@@ -20,6 +20,21 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		cfg.WorkMode = WorkModeMsg
 	}
 
+	// Backward compatibility for vintage errors.
+	if cfg.OnError != "" {
+		log.Warn().Msg(semLogContext + " - Deprecated OnError property set")
+		if len(cfg.OnErrors) == 0 {
+			log.Info().Msg(semLogContext + " - adapting to OnErrors")
+			cfg.OnErrors = []OnErrorPolicy{
+				{ErrLevel: OnErrorLevelSystem, Policy: cfg.OnError},
+				{ErrLevel: OnErrorLevelFatal, Policy: cfg.OnError},
+				{ErrLevel: OnErrorLevelError, Policy: cfg.OnError},
+			}
+		} else {
+			log.Info().Msg(semLogContext + " - OnErrors has been set, dropping OnError property")
+		}
+	}
+
 	t := transformerProducerImpl{
 		cfg:           cfg,
 		quitc:         make(chan struct{}),

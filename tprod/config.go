@@ -1,6 +1,7 @@
 package tprod
 
 import (
+	"errors"
 	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
@@ -10,6 +11,10 @@ import (
 )
 
 const (
+	OnErrorLevelFatal  = "fatal"
+	OnErrorLevelSystem = "system"
+	OnErrorLevelError  = "error"
+
 	OnErrorExit       = "exit"
 	OnErrorDeadLetter = "dead-letter"
 
@@ -46,14 +51,21 @@ type TracingCfg struct {
 	SpanName string `yaml:"span-name" mapstructure:"span-name" json:"span-name"`
 }
 
+const ()
+
 // Exit           ConfigExitPolicy           `yaml:"exit" mapstructure:"exit" json:"exit"`
+type OnErrorPolicy struct {
+	ErrLevel string `yaml:"err-level,omitempty" mapstructure:"err-level,omitempty" json:"err-level,omitempty"`
+	Policy   string `yaml:"policy,omitempty" mapstructure:"policy,omitempty" json:"policy,omitempty"`
+}
 
 type TransformerProducerConfig struct {
 	Name         string                           `yaml:"name" mapstructure:"name" json:"name"`
 	WorkMode     string                           `yaml:"work-mode" mapstructure:"work-mode" json:"work-mode"`
 	TickInterval time.Duration                    `yaml:"tick-interval,omitempty" mapstructure:"tick-interval,omitempty" json:"tick-interval,omitempty"`
 	OnError      string                           `yaml:"on-error,omitempty" mapstructure:"on-error,omitempty" json:"on-error,omitempty"` // Possible values: dead-letter, exit
-	OnEof        string                           `yaml:"on-eof,omitempty" mapstructure:"on-eof,omitempty" json:"on-eof,omitempty"`       // Possible values: exit
+	OnErrors     []OnErrorPolicy                  `yaml:"on-errors,omitempty" mapstructure:"on-errors,omitempty" json:"on-errors,omitempty"`
+	OnEof        string                           `yaml:"on-eof,omitempty" mapstructure:"on-eof,omitempty" json:"on-eof,omitempty"` // Possible values: exit
 	EofAfterN    int                              `yaml:"eof-after-n,omitempty" mapstructure:"eof-after-n,omitempty" json:"eof-after-n,omitempty"`
 	RefMetrics   *promutil.MetricsConfigReference `yaml:"ref-metrics"  mapstructure:"ref-metrics"  json:"ref-metrics"`
 	CommitMode   string                           `yaml:"commit-mode,omitempty" mapstructure:"commit-mode,omitempty" json:"commit-mode,omitempty"`
@@ -73,6 +85,32 @@ type ConfigTopic struct {
 	MaxPollTimeout int       `yaml:"max-poll-timeout,omitempty" mapstructure:"max-poll-timeout,omitempty" json:"max-poll-timeout,omitempty"`
 	TopicType      TopicType `yaml:"type,omitempty" mapstructure:"type,omitempty" json:"type,omitempty"`
 	MuteOn         bool      `yaml:"mute-on,omitempty" mapstructure:"mute-on,omitempty" json:"mute-on,omitempty"`
+}
+
+func (cfg *TransformerProducerConfig) ErrorPolicyForError(err error) string {
+
+	level := OnErrorLevelFatal
+	var tprodErr *TransformerProducerError
+	if errors.As(err, &tprodErr) {
+		level = tprodErr.Level
+	}
+
+	foundExit := false
+	for _, c := range cfg.OnErrors {
+		if c.ErrLevel == level {
+			return c.Policy
+		}
+
+		if c.Policy == OnErrorExit {
+			foundExit = true
+		}
+	}
+
+	if foundExit {
+		return OnErrorExit
+	}
+
+	return OnErrorDeadLetter
 }
 
 func (cfg *TransformerProducerConfig) CountDistinctProducerBrokers() []string {
