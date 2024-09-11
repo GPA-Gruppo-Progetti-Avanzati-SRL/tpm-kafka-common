@@ -55,7 +55,7 @@ const ()
 
 // Exit           ConfigExitPolicy           `yaml:"exit" mapstructure:"exit" json:"exit"`
 type OnErrorPolicy struct {
-	ErrLevel string `yaml:"err-level,omitempty" mapstructure:"err-level,omitempty" json:"err-level,omitempty"`
+	ErrLevel string `yaml:"level,omitempty" mapstructure:"level,omitempty" json:"level,omitempty"`
 	Policy   string `yaml:"policy,omitempty" mapstructure:"policy,omitempty" json:"policy,omitempty"`
 }
 
