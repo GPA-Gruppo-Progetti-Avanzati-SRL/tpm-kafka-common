@@ -340,7 +340,7 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) (BAMData, er
 		case OnErrorDeadLetter:
 			msg = []Message{{Span: msgIn.Span,
 				ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},
-				Headers: ToMessageHeaders(e.Headers),
+				Headers: msgIn.Headers,
 				Key:     e.Key,
 				Body:    e.Value,
 			}}
