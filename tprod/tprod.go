@@ -338,9 +338,19 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) (BAMData, er
 		log.Error().Err(procErr).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error processing message")
 		switch ErrorPolicyForError(err, tp.cfg.OnErrors) {
 		case OnErrorDeadLetter:
-			msg = []Message{{Span: msgIn.Span,
+			// Try to figure out if the process returned a message to be put in dlt. If not, proceed with the original one.
+			var dltMsg Message
+			var ok bool
+			if msg != nil {
+				dltMsg, ok = Messages(msg).GetDltMessage()
+			}
+
+			if !ok {
+				dltMsg = msgIn
+			}
+			msg = []Message{{Span: dltMsg.Span,
 				ToTopic: TargetTopic{TopicType: TopicTypeDeadLetter},
-				Headers: msgIn.Headers,
+				Headers: dltMsg.Headers,
 				Key:     e.Key,
 				Body:    e.Value,
 			}}

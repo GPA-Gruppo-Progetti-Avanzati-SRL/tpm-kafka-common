@@ -32,6 +32,18 @@ type Message struct {
 	MessageProducer MessageProducer
 }
 
+type Messages []Message
+
+func (msgs Messages) GetDltMessage() (Message, bool) {
+	for _, m := range msgs {
+		if m.ToTopic.TopicType == TopicTypeDeadLetter {
+			return m, true
+		}
+	}
+
+	return Message{}, false
+}
+
 func ToMessageHeaders(hs []kafka.Header) map[string]string {
 	if len(hs) == 0 {
 		return nil
