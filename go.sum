@@ -8,8 +8,8 @@ github.com/AlecAivazis/survey/v2 v2.3.7/go.mod h1:xUTIdE4KCOIjsBAE1JYsUPoCqYdZ1r
 github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 h1:UQHMgLO+TxOElx5B5HZ4hJQsoJ/PvUvKRhJHDQXO8P8=
 github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.53 h1:4ou7QsFrSQy8eCszIkF/6EXGrUq5vjmtwMp6IApQBHc=
-github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.53/go.mod h1:vnI1W77dpctWxMspokeoSVbGAOaU66mKfnCOyyoEYWQ=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.54 h1:Xrhb7FsJQK/v7a84Rg/EQrfvw+HvuK9jbw647s62/P8=
+github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.54/go.mod h1:vnI1W77dpctWxMspokeoSVbGAOaU66mKfnCOyyoEYWQ=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.1.7 h1:DwGhmk44xY0XS1TdO6qicBPYXn77suGGRxCUO0WPYzc=
 github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.1.7/go.mod h1:fkEXhi8bf4Pnw3a0ve44DvA+NHzMLVJ0crW9yIa4eeM=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2 h1:5IcZpTvzydCQeHzK4Ef/D5rrSqwxob0t8PQPMybUNFM=
