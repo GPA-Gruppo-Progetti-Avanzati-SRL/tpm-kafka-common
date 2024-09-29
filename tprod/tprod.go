@@ -100,7 +100,7 @@ func (tp *transformerProducerImpl) Start() {
 		go tp.monitorProducerEvents(v)
 	}
 
-	err := tp.consumer.Subscribe(tp.cfg.FromTopic.Name, nil)
+	err := tp.consumer.Subscribe(tp.cfg.FromTopic.Name, tp.rebalanceCb)
 	if err != nil {
 		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " topic subscription error")
 		return
@@ -406,6 +406,35 @@ func (tp *transformerProducerImpl) shutDown(err error) {
 
 }
 
+func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event) error {
+	const semLogContext = "t-prod::rebalance-callback"
+
+	switch e := ev.(type) {
+	case kafka.AssignedPartitions:
+		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
+
+		/*if err = tp.consumer.Assign(e.Partitions); err != nil {
+			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
+		}*/
+		tp.partitionsCnt = len(e.Partitions)
+		tp.eofCnt = 0
+	case kafka.RevokedPartitions:
+		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
+		/*		if err = tp.consumer.Unassign(); err != nil {
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
+			}*/
+
+		if tp.txActive {
+			_ = tp.abortTransaction(nil, false)
+		}
+
+		tp.partitionsCnt = 0
+		tp.eofCnt = 0
+	}
+
+	return nil
+}
+
 func (tp *transformerProducerImpl) poll() (bool, error) {
 	const semLogContext = "t-prod::poll"
 	var err error
@@ -414,18 +443,18 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 	ev := tp.consumer.Poll(tp.cfg.FromTopic.MaxPollTimeout)
 	switch e := ev.(type) {
 	case kafka.AssignedPartitions:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
-
-		if err = tp.consumer.Assign(e.Partitions); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
-		}
+		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
+		/*
+			if err = tp.consumer.Assign(e.Partitions); err != nil {
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
+			}*/
 		tp.partitionsCnt = len(e.Partitions)
 		tp.eofCnt = 0
 	case kafka.RevokedPartitions:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
-		if err = tp.consumer.Unassign(); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
-		}
+		/*		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
+				if err = tp.consumer.Unassign(); err != nil {
+					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
+				}*/
 
 		if tp.txActive {
 			_ = tp.abortTransaction(nil, false)
