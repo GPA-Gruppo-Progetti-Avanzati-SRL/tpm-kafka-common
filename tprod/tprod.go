@@ -17,14 +17,16 @@ import (
 )
 
 const (
-	MetricBatchErrors     = "tprod-batch-errors"
-	MetricBatches         = "tprod-batches"
-	MetricBatchSize       = "tprod-batch-size"
-	MetricBatchDuration   = "tprod-batch-duration"
-	MetricMessageErrors   = "tprod-event-errors"
-	MetricMessages        = "tprod-events"
-	MetricMessagesToTopic = "tprod-events-to-topic"
-	MetricMessageDuration = "tprod-event-duration"
+	MetricBatchErrors         = "tprod-batch-errors"
+	MetricBatches             = "tprod-batches"
+	MetricBatchSize           = "tprod-batch-size"
+	MetricBatchDuration       = "tprod-batch-duration"
+	MetricMessageErrors       = "tprod-event-errors"
+	MetricMessages            = "tprod-events"
+	MetricMessagesToTopic     = "tprod-events-to-topic"
+	MetricMessageDuration     = "tprod-event-duration"
+	MetricsPartitionsEvents   = "tprod-partitions-events"
+	MetricsNumberOfPartitions = "tprod-num-partitions"
 )
 
 type TransformerProducer interface {
@@ -418,6 +420,9 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 		}*/
 		tp.partitionsCnt = len(e.Partitions)
 		tp.eofCnt = 0
+		tp.metricLabels["event-type"] = "assigned-partitions"
+		_ = tp.produceMetric(nil, MetricsPartitionsEvents, 1, tp.metricLabels)
+		_ = tp.produceMetric(nil, MetricsNumberOfPartitions, float64(len(e.Partitions)), tp.metricLabels)
 	case kafka.RevokedPartitions:
 		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 		/*		if err = tp.consumer.Unassign(); err != nil {
@@ -430,6 +435,9 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 
 		tp.partitionsCnt = 0
 		tp.eofCnt = 0
+		tp.metricLabels["event-type"] = "assigned-partitions"
+		_ = tp.produceMetric(nil, MetricsPartitionsEvents, 1, tp.metricLabels)
+		_ = tp.produceMetric(nil, MetricsNumberOfPartitions, float64(len(e.Partitions)), tp.metricLabels)
 	}
 
 	return nil
