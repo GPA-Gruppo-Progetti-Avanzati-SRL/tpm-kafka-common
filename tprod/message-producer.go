@@ -115,7 +115,7 @@ func (p *messageProducerImpl) GetTopicConfig(topic TargetTopic) (ConfigTopic, er
 }
 
 func (p *messageProducerImpl) produce2Topics(messages []Message) error {
-	const semLogContext = "message-producer::produce-top-topics"
+	const semLogContext = "message-producer::produce-to-topics"
 	if p.buffered {
 		log.Info().Int("number-of-messages", len(messages)).Msg("produce2Topics")
 	}
@@ -139,7 +139,7 @@ func (p *messageProducerImpl) produce2Topics(messages []Message) error {
 }
 
 func (p *messageProducerImpl) produce2Topic(m Message) error {
-	const semLogContext = "message-producer::produce-top-topic"
+	const semLogContext = "message-producer::produce-to-topic"
 	if tcfg, err := p.GetTopicConfig(m.ToTopic); err != nil {
 		return err
 	} else {
