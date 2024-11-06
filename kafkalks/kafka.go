@@ -382,6 +382,7 @@ func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int)
 		evt.Headers = append(evt.Headers, attemptNumberHeader)
 	}
 
+	log.Trace().Interface("event", evt).Msg(semLogContext)
 	err = producer.Produce(evt, nil)
 	return true, err
 }
