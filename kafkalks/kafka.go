@@ -347,7 +347,7 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 const TpmKafkaNumberOfAttemptsHeaderName = "Number-Of-Kafka-Attempts"
 
 func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int) error {
-	const semLogContext = "kafka-lks::rework-message"
+	const semLogContext = "kafka-lks:q::rework-message"
 	var err error
 
 	if maxRetries <= 0 {
