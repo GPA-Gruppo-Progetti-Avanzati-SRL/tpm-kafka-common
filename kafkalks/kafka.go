@@ -346,7 +346,7 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 
 const TpmKafkaNumberOfAttemptsHeaderName = "Number-Of-Kafka-Attempts"
 
-func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int) (bool, error) {
+func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int, deliveryChan chan kafka.Event) (bool, error) {
 	const semLogContext = "kafka-lks:q::rework-message"
 	var err error
 
@@ -383,7 +383,7 @@ func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int)
 	}
 
 	log.Trace().Interface("event", evt).Msg(semLogContext)
-	err = producer.Produce(evt, nil)
+	err = producer.Produce(evt, deliveryChan)
 	return true, err
 }
 
