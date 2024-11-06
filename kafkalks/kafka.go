@@ -346,13 +346,13 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 
 const TpmKafkaNumberOfAttemptsHeaderName = "Number-Of-Kafka-Attempts"
 
-func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int) error {
+func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int) (bool, error) {
 	const semLogContext = "kafka-lks:q::rework-message"
 	var err error
 
 	if maxRetries <= 0 {
 		log.Info().Int("num-retries", maxRetries).Msg(semLogContext + " no retries on failed messages")
-		return nil
+		return false, nil
 	}
 
 	attemptNumber := 0
@@ -371,7 +371,7 @@ func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int)
 
 	if attemptNumber >= maxRetries {
 		log.Info().Int("num-retries", maxRetries).Int("attempt-number", attemptNumber).Msg(semLogContext + " reached max number of retries")
-		return nil
+		return false, nil
 	}
 
 	attemptNumber++
@@ -383,7 +383,7 @@ func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int)
 	}
 
 	err = producer.Produce(evt, nil)
-	return err
+	return true, err
 }
 
 func setMetrics(metrics promutil.MetricsConfigReference, lbls prometheus.Labels) error {
