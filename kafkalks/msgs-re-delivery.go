@@ -24,7 +24,7 @@ func (rft *ReDeliveryTrackInfo) ShouldResend() bool {
 		return false
 	}
 
-	return false
+	return true
 }
 
 type ReDeliveryOpts struct {
@@ -49,8 +49,7 @@ func ReDeliveryMessage(producer *kafka.Producer, evt *kafka.Message, opts ...Red
 	}
 
 	trackInfo := extractRedeliveryTrackInfoFromMessage(evt, redeliveryOptions)
-	if trackInfo.ShouldResend() {
-		log.Trace().Interface("redelivery-track-info", trackInfo).Msg(semLogContext + " no retries on failed message")
+	if !trackInfo.ShouldResend() {
 		return false, nil
 	}
 
