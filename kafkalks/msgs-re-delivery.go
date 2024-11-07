@@ -58,7 +58,7 @@ func ReDeliveryMessage(producer *kafka.Producer, evt *kafka.Message, opts ...Red
 	evt.Headers = append(evt.Headers, attemptNumberHeader)
 
 	evt.Opaque = trackInfo
-	log.Trace().Interface("event", evt).Msg(semLogContext)
+	log.Trace().Interface("redelivery-track-info", trackInfo).Interface("key", string(evt.Key)).Msg(semLogContext)
 	err = producer.Produce(evt, nil)
 	return true, err
 }
