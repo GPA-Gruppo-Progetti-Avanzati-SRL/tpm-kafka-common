@@ -40,6 +40,8 @@ const (
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
 	Debug                                        = "debug"
+
+	KafkaNumberOfDeliveryAttemptsHeaderName = "Kafka-Delivery-Attempts"
 )
 
 type ConsumerConfig struct {

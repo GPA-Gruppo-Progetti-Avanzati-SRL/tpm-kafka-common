@@ -343,57 +343,6 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 	log.Info().Msg(semLogContext + " exiting from monitor producer events")
 }
 
-const TpmKafkaNumberOfAttemptsHeaderName = "Number-Of-Kafka-Attempts"
-
-func ReWorkMessage(producer *kafka.Producer, evt *kafka.Message, maxRetries int, deliveryChan chan kafka.Event) (bool, error) {
-	const semLogContext = "kafka-lks:q::rework-message"
-	var err error
-
-	if maxRetries <= 0 {
-		log.Info().Int("num-retries", maxRetries).Msg(semLogContext + " no retries on failed messages")
-		return false, nil
-	}
-
-	attemptNumber := 0
-	if evt.Opaque != nil {
-		opaqueInt, ok := evt.Opaque.(int)
-		if ok {
-			attemptNumber = opaqueInt
-		}
-	}
-
-	//attemptHeaderIndex := -1
-	//if len(evt.Headers) > 0 {
-	//	for i, h := range evt.Headers {
-	//		if strings.ToLower(h.Key) == TpmKafkaNumberOfAttemptsHeaderName {
-	//			attemptHeaderIndex = i
-	//			attemptNumber, err = strconv.Atoi(h.String())
-	//			if err != nil {
-	//				log.Error().Err(err).Msg(semLogContext)
-	//			}
-	//		}
-	//	}
-	//}
-
-	if attemptNumber >= maxRetries {
-		log.Info().Int("num-retries", maxRetries).Int("attempt-number", attemptNumber).Msg(semLogContext + " reached max number of retries")
-		return false, nil
-	}
-
-	attemptNumber++
-	// attemptNumberHeader := kafka.Header{Key: TpmKafkaNumberOfAttemptsHeaderName, Value: []byte(fmt.Sprint(attemptNumber))}
-	//if len(evt.Headers) > 0 && attemptHeaderIndex >= 0 {
-	//	evt.Headers[attemptHeaderIndex] = attemptNumberHeader
-	//} else {
-	//	evt.Headers = append(evt.Headers, attemptNumberHeader)
-	//}
-
-	evt.Opaque = attemptNumber
-	log.Trace().Interface("event", evt).Msg(semLogContext)
-	err = producer.Produce(evt, deliveryChan)
-	return true, err
-}
-
 func setMetrics(metrics promutil.MetricsConfigReference, lbls prometheus.Labels) error {
 	const semLogContext = "kafka-lks::set-monitor-producer-metrics"
 
