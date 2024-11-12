@@ -265,6 +265,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 	}
 
 	defer tp.msgProducer.Release()
+	defer tp.processor.Clear()
 
 	if tp.processor.BatchSize() == 0 {
 		err := tp.msgProducer.Close()

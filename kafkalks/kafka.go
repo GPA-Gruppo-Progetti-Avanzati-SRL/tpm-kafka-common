@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
@@ -103,6 +104,7 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 	}
 
 	if transactionalId != "" {
+		transactionalId := strings.Replace(transactionalId, "{uuid}", util.NewUUID(), -1)
 		_ = cfgMap2.SetKey(TransactionalIdPropertyName, transactionalId)
 		_ = cfgMap2.SetKey(TransactionalTimeoutMsPropertyName, lks.cfg.Producer.MaxTimeoutMs)
 	} else {
