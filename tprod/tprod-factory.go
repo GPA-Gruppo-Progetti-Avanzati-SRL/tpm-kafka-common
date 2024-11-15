@@ -83,7 +83,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 
 	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tx-id", t.cfg.ProducerId).Bool("auto-commit", isAutoCommit).Msg(semLogContext + " transform producer: setting commit params")
 	if len(producerBrokers) > 0 {
-		t.producers = make(map[string]*kafka.Producer)
+		t.producers = make(map[string]KafkaProducerWrapper)
 	} else {
 		log.Warn().Msg(semLogContext + " no output topics configured...")
 	}
@@ -94,13 +94,20 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 
 	for _, brokerName := range producerBrokers {
 		p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId)
-		if cfg.WorkMode == WorkModeBatch {
-			t.msgProducer = NewMessageProducer(cfg.Name, p, true, cfg.ToTopics, cfg.RefMetrics.GId)
-		}
 		if err != nil {
 			return nil, err
 		}
-		t.producers[brokerName] = p
+
+		var deliveryChannel chan kafka.Event
+		if cfg.WithSynchDelivery {
+			deliveryChannel = make(chan kafka.Event)
+		}
+		kp := NewKafkaProducerWrapper(cfg.Name, p, deliveryChannel)
+		t.producers[brokerName] = kp
+
+		if cfg.WorkMode == WorkModeBatch {
+			t.msgProducer = NewMessageProducer(cfg.Name, kp, true, cfg.ToTopics, cfg.RefMetrics.GId)
+		}
 	}
 
 	t.consumer, err = kafkalks.NewKafkaConsumer(util.StringCoalesce(t.cfg.FromTopic.BrokerName, t.cfg.BrokerName), t.cfg.GroupId, isAutoCommit)

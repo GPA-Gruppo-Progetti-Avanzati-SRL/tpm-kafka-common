@@ -2,6 +2,7 @@ package tprod
 
 import (
 	"errors"
+	"fmt"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
@@ -25,13 +26,13 @@ type messageProducerImpl struct {
 	producedMessages int
 	DeadLetterTopic  string
 	OutTopicsCfg     []ConfigTopic
-	producer         *kafka.Producer
+	producer         KafkaProducerWrapper
 	messages         []Message
 	metricsGroupId   string
 	metricsLabels    map[string]string
 }
 
-func NewMessageProducer(name string, producer *kafka.Producer, buffered bool, outs []ConfigTopic, metricsGroupId string) MessageProducer {
+func NewMessageProducer(name string, producer KafkaProducerWrapper, buffered bool, outs []ConfigTopic, metricsGroupId string) MessageProducer {
 	return &messageProducerImpl{
 		buffered:       buffered,
 		producer:       producer,
@@ -172,9 +173,9 @@ func (p *messageProducerImpl) produce2Topic(m Message) error {
 			}
 		}
 
-		if err := p.producer.Produce(km, nil); err != nil {
+		if st, err := p.producer.Produce(km); err != nil {
 			log.Error().Err(err).Msg(semLogContext)
-			p.metricsLabels["status-code"] = "500"
+			p.metricsLabels["status-code"] = fmt.Sprint(st)
 			p.metricsLabels["topic-name"] = tcfg.Name
 			p.produceMetric(nil, MetricMessagesToTopic, 1, p.metricsLabels)
 			return err

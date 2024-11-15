@@ -54,7 +54,7 @@ type transformerProducerImpl struct {
 	parent Server
 
 	txActive    bool
-	producers   map[string]*kafka.Producer
+	producers   map[string]KafkaProducerWrapper
 	msgProducer MessageProducer
 	consumer    *kafka.Consumer
 
@@ -97,9 +97,11 @@ func (tp *transformerProducerImpl) Start() {
 		log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " no to-topics configured.... skipping monitoring events.")
 	}
 
-	for _, p := range tp.producers {
-		v := p
-		go tp.monitorProducerEvents(v)
+	if !tp.cfg.WithSynchDelivery {
+		for _, p := range tp.producers {
+			v := p
+			go tp.monitorProducerEvents(v)
+		}
 	}
 
 	err := tp.consumer.Subscribe(tp.cfg.FromTopic.Name, tp.rebalanceCb)
@@ -117,7 +119,7 @@ func (tp *transformerProducerImpl) Close() {
 	close(tp.quitc)
 }
 
-func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Producer) {
+func (tp *transformerProducerImpl) monitorProducerEvents(producer KafkaProducerWrapper) {
 	const semLogContext = "t-prod::monitor-producer"
 	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " starting monitor producer events")
 
@@ -135,8 +137,10 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer *kafka.Produce
 				lbls["status-code"] = "500"
 				lbls["topic-name"] = *ev.TopicPartition.Topic
 				_ = tp.produceMetric(nil, MetricMessagesToTopic, 1, lbls)
-				if err := tp.abortTransaction(nil, true); err != nil {
-					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
+				if !tp.cfg.NoAbortOnAsyncDeliveryFailed {
+					if err := tp.abortTransaction(nil, true); err != nil {
+						log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
+					}
 				}
 
 				if tp.exitOnError(semLogContext, ev.TopicPartition.Error) {
@@ -672,16 +676,16 @@ func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOn
 	return nil
 }
 
-func (tp *transformerProducerImpl) getProducerForTopic(topicCfg *ConfigTopic) (*kafka.Producer, error) {
+func (tp *transformerProducerImpl) getProducerForTopic(topicCfg *ConfigTopic) (KafkaProducerWrapper, error) {
 	n := util.StringCoalesce(topicCfg.BrokerName, tp.cfg.BrokerName)
 	if p, ok := tp.producers[n]; ok {
 		return p, nil
 	}
 
-	return nil, fmt.Errorf("cannot find producer for topic %s in broker %s", topicCfg.Name, n)
+	return KafkaProducerWrapper{}, fmt.Errorf("cannot find producer for topic %s in broker %s", topicCfg.Name, n)
 }
 
-func (tp *transformerProducerImpl) getProducer() *kafka.Producer {
+func (tp *transformerProducerImpl) getProducer() KafkaProducerWrapper {
 
 	if len(tp.producers) == 1 {
 		for _, p := range tp.producers {
@@ -757,8 +761,8 @@ func (tp *transformerProducerImpl) produce2Topic(msgs []Message) error {
 					return err
 				}
 
-				if err := producer.Produce(km, nil); err != nil {
-					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " errors in producing message")
+				if st, err := producer.Produce(km); err != nil {
+					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Int("status", st).Msg(semLogContext + " errors in producing message")
 					return err
 				}
 			}
