@@ -173,11 +173,12 @@ func (p *messageProducerImpl) produce2Topic(m Message) error {
 			}
 		}
 
-		if st, err := p.producer.Produce(km); err != nil {
+		st, err := p.producer.Produce(km)
+		p.metricsLabels["status-code"] = fmt.Sprint(st)
+		p.metricsLabels["topic-name"] = tcfg.Name
+		p.produceMetric(nil, MetricMessagesToTopic, 1, p.metricsLabels)
+		if err != nil {
 			log.Error().Err(err).Msg(semLogContext)
-			p.metricsLabels["status-code"] = fmt.Sprint(st)
-			p.metricsLabels["topic-name"] = tcfg.Name
-			p.produceMetric(nil, MetricMessagesToTopic, 1, p.metricsLabels)
 			return err
 		}
 	}
