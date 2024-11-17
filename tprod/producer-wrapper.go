@@ -5,16 +5,22 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"
 	"net/http"
+	"sync"
 )
 
 type KafkaProducerWrapper struct {
 	name      string
 	producer  *kafka.Producer
 	delivChan chan kafka.Event
+	mu        *sync.Mutex
 }
 
 func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.Event) KafkaProducerWrapper {
-	return KafkaProducerWrapper{name: n, producer: p, delivChan: delivChan}
+	var mu *sync.Mutex
+	if delivChan != nil {
+		mu = new(sync.Mutex)
+	}
+	return KafkaProducerWrapper{name: n, producer: p, delivChan: delivChan, mu: mu}
 }
 
 func (p KafkaProducerWrapper) Close() {
@@ -29,6 +35,7 @@ func (p KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
 	var err error
 	st := http.StatusInternalServerError
 	if p.delivChan != nil {
+		p.mu.Lock()
 		err = p.producer.Produce(m, p.delivChan)
 		if err != nil {
 			log.Error().Err(err).Msg(semLogContext)
@@ -40,6 +47,7 @@ func (p KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
 		if err == nil {
 			st = http.StatusOK
 		}
+		p.mu.Unlock()
 	} else {
 		err = p.producer.Produce(m, nil)
 		if err == nil {
