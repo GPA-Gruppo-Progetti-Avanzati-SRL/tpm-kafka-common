@@ -48,6 +48,7 @@ func (lks *LinkedService) Close() {
 		unf := lks.sharedProducer.producer.Flush(timeoutMs)
 		for unf > 0 {
 			log.Info().Int("timeout-ms", timeoutMs).Int("out-standing", unf).Msg(semLogContext + " outstanding events")
+			unf = lks.sharedProducer.producer.Flush(timeoutMs)
 		}
 		lks.sharedProducer.producer.Close()
 		lks.sharedProducer.producer = nil
