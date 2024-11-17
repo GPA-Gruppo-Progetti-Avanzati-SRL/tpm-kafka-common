@@ -40,7 +40,7 @@ func (lks *LinkedService) Close() {
 	const semLogContext = "kafka-lks::close"
 	if lks.sharedProducer.producer != nil {
 		timeoutMs := 1000
-		if lks.cfg.Producer.FlushTimeout == 0 {
+		if lks.cfg.Producer.FlushTimeout != 0 {
 			timeoutMs = int(lks.cfg.Producer.FlushTimeout.Milliseconds())
 		}
 
