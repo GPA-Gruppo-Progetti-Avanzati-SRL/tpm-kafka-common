@@ -97,7 +97,7 @@ func (tp *transformerProducerImpl) Start() {
 		log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " no to-topics configured.... skipping monitoring events.")
 	}
 
-	if !tp.cfg.WithSynchDelivery {
+	if !tp.cfg.WithSynchDelivery() {
 		for _, p := range tp.producers {
 			v := p
 			go tp.monitorProducerEvents(v)
@@ -137,7 +137,7 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer KafkaProducerW
 				lbls["status-code"] = "500"
 				lbls["topic-name"] = *ev.TopicPartition.Topic
 				_ = tp.produceMetric(nil, MetricMessagesToTopic, 1, lbls)
-				if !tp.cfg.NoAbortOnAsyncDeliveryFailed {
+				if !tp.cfg.NoAbortOnAsyncDeliveryFailed() {
 					if err := tp.abortTransaction(nil, true); err != nil {
 						log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction")
 					}

@@ -57,24 +57,40 @@ type OnErrorPolicy struct {
 }
 
 type TransformerProducerConfig struct {
-	Name                         string                           `yaml:"name" mapstructure:"name" json:"name"`
-	WorkMode                     string                           `yaml:"work-mode" mapstructure:"work-mode" json:"work-mode"`
-	TickInterval                 time.Duration                    `yaml:"tick-interval,omitempty" mapstructure:"tick-interval,omitempty" json:"tick-interval,omitempty"`
-	OnError                      string                           `yaml:"on-error,omitempty" mapstructure:"on-error,omitempty" json:"on-error,omitempty"` // Possible values: dead-letter, exit
-	OnErrors                     []OnErrorPolicy                  `yaml:"on-errors,omitempty" mapstructure:"on-errors,omitempty" json:"on-errors,omitempty"`
-	OnEof                        string                           `yaml:"on-eof,omitempty" mapstructure:"on-eof,omitempty" json:"on-eof,omitempty"` // Possible values: exit
-	EofAfterN                    int                              `yaml:"eof-after-n,omitempty" mapstructure:"eof-after-n,omitempty" json:"eof-after-n,omitempty"`
-	RefMetrics                   *promutil.MetricsConfigReference `yaml:"ref-metrics"  mapstructure:"ref-metrics"  json:"ref-metrics"`
-	CommitMode                   string                           `yaml:"commit-mode,omitempty" mapstructure:"commit-mode,omitempty" json:"commit-mode,omitempty"`
-	GroupId                      string                           `yaml:"consumer-group-id,omitempty" mapstructure:"consumer-group-id,omitempty" json:"consumer-group-id,omitempty"`
-	ProducerId                   string                           `yaml:"producer-tx-id,omitempty" mapstructure:"producer-tx-id,omitempty" json:"producer-tx-id,omitempty"`
-	BrokerName                   string                           `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
-	FromTopic                    ConfigTopic                      `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
-	ToTopics                     []ConfigTopic                    `yaml:"to-topics,omitempty" mapstructure:"to-topics,omitempty" json:"to-topics,omitempty"`
-	Tracing                      TracingCfg                       `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
-	StartDelay                   int                              `yaml:"start-delay" mapstructure:"start-delay" json:"start-delay"`
-	WithSynchDelivery            bool                             `yaml:"with-synch-delivery,omitempty" mapstructure:"with-synch-delivery,omitempty" json:"with-synch-delivery,omitempty"`
-	NoAbortOnAsyncDeliveryFailed bool                             `yaml:"no-abort-on-async-delivery-failed,omitempty" mapstructure:"no-abort-on-async-delivery-failed,omitempty" json:"no-abort-on-async-delivery-failed,omitempty"`
+	Name                    string                           `yaml:"name" mapstructure:"name" json:"name"`
+	WorkMode                string                           `yaml:"work-mode" mapstructure:"work-mode" json:"work-mode"`
+	TickInterval            time.Duration                    `yaml:"tick-interval,omitempty" mapstructure:"tick-interval,omitempty" json:"tick-interval,omitempty"`
+	OnError                 string                           `yaml:"on-error,omitempty" mapstructure:"on-error,omitempty" json:"on-error,omitempty"` // Possible values: dead-letter, exit
+	OnErrors                []OnErrorPolicy                  `yaml:"on-errors,omitempty" mapstructure:"on-errors,omitempty" json:"on-errors,omitempty"`
+	OnEof                   string                           `yaml:"on-eof,omitempty" mapstructure:"on-eof,omitempty" json:"on-eof,omitempty"` // Possible values: exit
+	EofAfterN               int                              `yaml:"eof-after-n,omitempty" mapstructure:"eof-after-n,omitempty" json:"eof-after-n,omitempty"`
+	RefMetrics              *promutil.MetricsConfigReference `yaml:"ref-metrics"  mapstructure:"ref-metrics"  json:"ref-metrics"`
+	CommitMode              string                           `yaml:"commit-mode,omitempty" mapstructure:"commit-mode,omitempty" json:"commit-mode,omitempty"`
+	GroupId                 string                           `yaml:"consumer-group-id,omitempty" mapstructure:"consumer-group-id,omitempty" json:"consumer-group-id,omitempty"`
+	ProducerId              string                           `yaml:"producer-tx-id,omitempty" mapstructure:"producer-tx-id,omitempty" json:"producer-tx-id,omitempty"`
+	BrokerName              string                           `yaml:"broker-name,omitempty" mapstructure:"broker-name,omitempty" json:"broker-name,omitempty"`
+	FromTopic               ConfigTopic                      `yaml:"from-topic" mapstructure:"from-topic" json:"from-topic"`
+	ToTopics                []ConfigTopic                    `yaml:"to-topics,omitempty" mapstructure:"to-topics,omitempty" json:"to-topics,omitempty"`
+	Tracing                 TracingCfg                       `yaml:"tracing" mapstructure:"tracing" json:"tracing"`
+	StartDelay              int                              `yaml:"start-delay" mapstructure:"start-delay" json:"start-delay"`
+	WithSynchDlv            string                           `yaml:"with-synch-delivery,omitempty" mapstructure:"with-synch-delivery,omitempty" json:"with-synch-delivery,omitempty"`
+	NoAbortOnAsyncDlvFailed string                           `yaml:"no-abort-on-async-delivery-failed,omitempty" mapstructure:"no-abort-on-async-delivery-failed,omitempty" json:"no-abort-on-async-delivery-failed,omitempty"`
+}
+
+func (d *TransformerProducerConfig) WithSynchDelivery() bool {
+	if d.WithSynchDlv == "" || d.WithSynchDlv == "true" {
+		return true
+	}
+
+	return false
+}
+
+func (d *TransformerProducerConfig) NoAbortOnAsyncDeliveryFailed() bool {
+	if d.NoAbortOnAsyncDlvFailed == "" || d.NoAbortOnAsyncDlvFailed == "true" {
+		return true
+	}
+
+	return false
 }
 
 type ConfigTopic struct {

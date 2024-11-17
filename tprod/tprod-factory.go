@@ -99,7 +99,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		}
 
 		var deliveryChannel chan kafka.Event
-		if cfg.WithSynchDelivery {
+		if cfg.WithSynchDelivery() {
 			deliveryChannel = make(chan kafka.Event)
 		}
 		kp := NewKafkaProducerWrapper(cfg.Name, p, deliveryChannel)
