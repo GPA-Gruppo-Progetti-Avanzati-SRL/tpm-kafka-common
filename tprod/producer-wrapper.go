@@ -36,6 +36,8 @@ func (p KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
 	st := http.StatusInternalServerError
 	if p.delivChan != nil {
 		p.mu.Lock()
+		defer p.mu.Unlock()
+
 		err = p.producer.Produce(m, p.delivChan)
 		if err != nil {
 			log.Error().Err(err).Msg(semLogContext)
@@ -47,7 +49,6 @@ func (p KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
 		if err == nil {
 			st = http.StatusOK
 		}
-		p.mu.Unlock()
 	} else {
 		err = p.producer.Produce(m, nil)
 		if err == nil {
