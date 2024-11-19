@@ -39,20 +39,21 @@ func (p KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
 		defer p.mu.Unlock()
 
 		err = p.producer.Produce(m, p.delivChan)
-		if err != nil {
-			log.Error().Err(err).Msg(semLogContext)
-			return st, err
-		}
-
-		e := <-p.delivChan
-		err = p.processDeliveryEvent(e)
 		if err == nil {
-			st = http.StatusOK
+			e := <-p.delivChan
+			err = p.processDeliveryEvent(e)
+			if err == nil {
+				st = http.StatusOK
+			}
+		} else {
+			log.Error().Err(err).Msg(semLogContext + " - produce with synch delivery failed")
 		}
 	} else {
 		err = p.producer.Produce(m, nil)
 		if err == nil {
 			st = http.StatusAccepted
+		} else {
+			log.Error().Err(err).Msg(semLogContext + " - produce with a-synch delivery failed")
 		}
 	}
 
