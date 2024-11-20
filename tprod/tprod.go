@@ -10,6 +10,7 @@ import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
+
 	"github.com/rs/zerolog/log"
 	"io"
 	"sync"
@@ -438,7 +439,7 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 
 	switch e := ev.(type) {
 	case kafka.AssignedPartitions:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
+		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
 
 		/*if err = tp.consumer.Assign(e.Partitions); err != nil {
 			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
@@ -449,7 +450,7 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 		_ = tp.produceMetric(nil, MetricsPartitionsEvents, 1, tp.metricLabels)
 		_ = tp.produceMetric(nil, MetricsNumberOfPartitions, float64(len(e.Partitions)), tp.metricLabels)
 	case kafka.RevokedPartitions:
-		log.Info().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
+		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 		/*		if err = tp.consumer.Unassign(); err != nil {
 				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 			}*/
