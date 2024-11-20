@@ -4,19 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func LogKafkaError(semLogContext string, err error) {
+func logKafkaError(err error) *zerolog.Event {
 	var kErr kafka.Error
+	var evt *zerolog.Event
 	if errors.As(err, &kErr) {
-		log.Error().Err(kErr).
+		evt = log.Error().Err(kErr).
 			Bool("tx-requires-abort", kErr.TxnRequiresAbort()).
 			Bool("timeout", kErr.IsTimeout()).
 			Bool("retriable", kErr.IsRetriable()).
 			Bool("fatal", kErr.IsFatal()).
-			Msg(semLogContext)
+			Int("code", int(kErr.Code()))
 	} else {
-		log.Error().Err(err).Str("err-type", fmt.Sprintf("%T", kErr)).Msg(semLogContext + " - error is not kafka")
+		evt = log.Error().Err(err).Str("err-type", fmt.Sprintf("%T", kErr))
 	}
+
+	return evt
 }

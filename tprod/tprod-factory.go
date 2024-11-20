@@ -93,7 +93,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	}
 
 	for _, brokerName := range producerBrokers {
-		p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId)
+		p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny})
 		if err != nil {
 			return nil, err
 		}

@@ -29,6 +29,7 @@ type Message struct {
 	Headers         map[string]string
 	Key             []byte
 	Body            []byte
+	TopicPartition  kafka.TopicPartition
 	MessageProducer MessageProducer
 }
 
@@ -80,6 +81,7 @@ func NewMessage(n string, km *kafka.Message, opts ...MessageOption) Message {
 	}
 
 	return Message{
+		TopicPartition:  km.TopicPartition,
 		HarSpan:         harSpan,
 		Span:            span,
 		Headers:         ToMessageHeaders(km.Headers),

@@ -3,6 +3,7 @@ package kafkalks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"
 )
@@ -75,11 +76,14 @@ func NewKafkaConsumer(brokerName, gId string, autoCommit bool) (*kafka.Consumer,
 	return k.NewConsumer(gId, autoCommit)
 }
 
-func NewKafkaProducer(ctx context.Context, brokerName, tId string) (*kafka.Producer, error) {
+func NewKafkaProducer(ctx context.Context, brokerName, tId string, toppar kafka.TopicPartition) (*kafka.Producer, error) {
 	k, err := GetKafkaLinkedService(brokerName)
 	if err != nil {
 		return nil, err
 	}
 
+	if toppar.Partition != kafka.PartitionAny && tId != "" {
+		tId = fmt.Sprintf("%s-p%d", tId, int(toppar.Partition))
+	}
 	return k.NewProducer(ctx, tId)
 }
