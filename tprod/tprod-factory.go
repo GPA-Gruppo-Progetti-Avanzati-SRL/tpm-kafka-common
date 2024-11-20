@@ -93,18 +93,27 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	}
 
 	for _, brokerName := range producerBrokers {
-		p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny})
+
+		kp, err := NewKafkaProducerWrapper2(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny}, cfg.WithSynchDelivery())
 		if err != nil {
+			log.Error().Err(err).Msg(semLogContext)
 			return nil, err
 		}
-
-		var deliveryChannel chan kafka.Event
-		if cfg.WithSynchDelivery() {
-			deliveryChannel = make(chan kafka.Event)
-		}
-		kp := NewKafkaProducerWrapper(cfg.Name, p, deliveryChannel)
 		t.producers[brokerName] = kp
 
+		/*
+			p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny})
+			if err != nil {
+				return nil, err
+			}
+
+			var deliveryChannel chan kafka.Event
+			if cfg.WithSynchDelivery() {
+				deliveryChannel = make(chan kafka.Event)
+			}
+			kp := NewKafkaProducerWrapper(cfg.Name, p, deliveryChannel)
+			t.producers[brokerName] = kp
+		*/
 		if cfg.WorkMode == WorkModeBatch {
 			t.msgProducer = NewMessageProducer(cfg.Name, kp, true, cfg.ToTopics, cfg.RefMetrics.GId)
 		}

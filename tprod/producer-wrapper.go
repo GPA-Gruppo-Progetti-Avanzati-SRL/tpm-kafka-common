@@ -2,6 +2,8 @@ package tprod
 
 import (
 	"context"
+	"fmt"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -9,10 +11,35 @@ import (
 )
 
 type KafkaProducerWrapper struct {
-	name      string
-	producer  *kafka.Producer
-	delivChan chan kafka.Event
-	mu        *sync.Mutex
+	name            string
+	producer        *kafka.Producer
+	isTransactional bool
+	delivChan       chan kafka.Event
+	mu              *sync.Mutex
+}
+
+func NewKafkaProducerWrapper2(ctx context.Context, brokerName, transactionId string, toppar kafka.TopicPartition, withDeliveryChannel bool) (KafkaProducerWrapper, error) {
+	const semLogContext = "partitioned-message-producer::new-kafka-producer-wrapper"
+	p, err := kafkalks.NewKafkaProducer(context.Background(), brokerName, transactionId, toppar)
+	if err != nil {
+		return KafkaProducerWrapper{}, err
+	}
+
+	producerName := brokerName
+	if toppar.Partition != kafka.PartitionAny {
+		producerName = fmt.Sprintf("%s-p%d", producerName, int(toppar.Partition))
+	}
+
+	var deliveryChannel chan kafka.Event
+	if withDeliveryChannel {
+		deliveryChannel = make(chan kafka.Event)
+	}
+
+	kp := NewKafkaProducerWrapper(producerName, p, deliveryChannel)
+	if transactionId != "" {
+		kp.isTransactional = true
+	}
+	return kp, nil
 }
 
 func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.Event) KafkaProducerWrapper {
@@ -24,6 +51,20 @@ func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.E
 }
 
 func (p KafkaProducerWrapper) Close() {
+	const semLogContext = "producer-wrapper::close"
+	var err error
+	if p.isTransactional {
+		err = p.producer.AbortTransaction(context.Background())
+		if err != nil {
+			if err.(kafka.Error).Code() == kafka.ErrState {
+				// No transaction in progress, ignore the error.
+				err = nil
+			} else {
+				logKafkaError(err).Msg(semLogContext + " - failed to abort transaction")
+			}
+		}
+	}
+
 	p.producer.Close()
 	if p.delivChan != nil {
 		close(p.delivChan)
@@ -93,6 +134,82 @@ func (kp KafkaProducerWrapper) SendOffsetsToTransaction(ctx context.Context, off
 
 func (kp KafkaProducerWrapper) CommitTransaction(ctx context.Context) error {
 	return kp.producer.CommitTransaction(ctx)
+}
+
+// CommitTransactionForInputPartition sends the consumer offsets for
+// the given input partition and commits the current transaction.
+// A new transaction will be started when done.
+func (kp KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kafka.Consumer, toppar kafka.TopicPartition) error {
+	const semLogContext = "producer-wrapper::commit-tx-for-input-partition"
+	position, err := consumer.Position([]kafka.TopicPartition{toppar})
+	if err != nil {
+		logKafkaError(err).Msg(semLogContext)
+		return err
+	}
+
+	consumerMetadata, err := consumer.GetConsumerGroupMetadata()
+	if err != nil {
+		logKafkaError(err).Msg(semLogContext)
+		return err
+	}
+
+	err = kp.SendOffsetsToTransaction(nil, position, consumerMetadata)
+	if err != nil {
+		logKafkaError(err).Interface("position", position).Msg(semLogContext)
+		err = kp.AbortTransaction(nil)
+		if err != nil {
+			logKafkaError(err).Msg(semLogContext)
+			return err
+		}
+
+		// Rewind this input partition to the last committed offset.
+		err = kp.rewindConsumerPosition(consumer, toppar)
+	} else {
+		err = kp.CommitTransaction(nil)
+		if err != nil {
+			logKafkaError(err).Int32("partition", toppar.Partition).Msg(semLogContext)
+			err = kp.AbortTransaction(nil)
+			if err != nil {
+				logKafkaError(err).Msg(semLogContext)
+				return err
+			}
+
+			// Rewind this input partition to the last committed offset.
+			err = kp.rewindConsumerPosition(consumer, toppar)
+		}
+	}
+
+	return nil
+}
+
+// rewindConsumerPosition rewinds the consumer to the last committed offset or
+// the beginning of the partition if there is no committed offset.
+// This is to be used when the current transaction is aborted.
+func (kp KafkaProducerWrapper) rewindConsumerPosition(consumer *kafka.Consumer, toppar kafka.TopicPartition) error {
+	const semLogContext = "producer-wrapper::rewind-consumer-position"
+	committed, err := consumer.Committed([]kafka.TopicPartition{toppar}, 10*1000 /* 10s */)
+	if err != nil {
+		logKafkaError(err).Msg(semLogContext)
+		return err
+	}
+
+	for _, tp := range committed {
+		if tp.Offset < 0 {
+			// No committed offset, reset to earliest
+			tp.Offset = kafka.OffsetBeginning
+			tp.LeaderEpoch = nil
+		}
+
+		log.Info().Interface("partition", tp).Msg(semLogContext)
+
+		err = consumer.Seek(tp, -1)
+		if err != nil {
+			logKafkaError(err).Msg(semLogContext)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (kp KafkaProducerWrapper) Events() chan kafka.Event {
