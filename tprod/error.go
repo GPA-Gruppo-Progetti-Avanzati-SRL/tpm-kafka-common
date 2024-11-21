@@ -11,6 +11,12 @@ import (
 func logKafkaError(err error) *zerolog.Event {
 	var kErr kafka.Error
 	var evt *zerolog.Event
+
+	if err == nil {
+		evt = log.Trace()
+		return evt
+	}
+
 	if errors.As(err, &kErr) {
 		evt = log.Error().Err(kErr).
 			Bool("tx-requires-abort", kErr.TxnRequiresAbort()).
@@ -23,4 +29,17 @@ func logKafkaError(err error) *zerolog.Event {
 	}
 
 	return evt
+}
+
+func isKafkaErrorFatal(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var kErr kafka.Error
+	if errors.As(err, &kErr) {
+		return kErr.IsFatal()
+	}
+
+	return false
 }

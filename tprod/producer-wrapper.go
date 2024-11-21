@@ -3,6 +3,7 @@ package tprod
 import (
 	"context"
 	"fmt"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"
@@ -168,10 +169,10 @@ func (kp KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kafk
 		err = kp.CommitTransaction(nil)
 		if err != nil {
 			logKafkaError(err).Int32("partition", toppar.Partition).Msg(semLogContext)
-			err = kp.AbortTransaction(nil)
-			if err != nil {
+			abortErr := kp.AbortTransaction(nil)
+			if abortErr != nil {
 				logKafkaError(err).Msg(semLogContext)
-				return err
+				return util.CoalesceError(abortErr, err)
 			}
 
 			// Rewind this input partition to the last committed offset.
@@ -179,7 +180,7 @@ func (kp KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kafk
 		}
 	}
 
-	return nil
+	return err
 }
 
 // rewindConsumerPosition rewinds the consumer to the last committed offset or

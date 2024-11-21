@@ -1,15 +1,12 @@
 package tprod
 
 import (
-	"context"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"
 	"sync"
 
 	"strings"
-	"time"
 )
 
 func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, processor TransformerProducerProcessor) (TransformerProducer, error) {
@@ -40,6 +37,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		quitc:         make(chan struct{}),
 		monitorQuitc:  nil,
 		txActive:      false,
+		brokers:       nil,
 		producers:     nil,
 		consumer:      nil,
 		partitionsCnt: 0,
@@ -57,10 +55,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 
 	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tick-interval", cfg.TickInterval.String()).Msg(semLogContext + " initializing tick interval")
 
-	ctx, ctxCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer ctxCancel()
-
-	producerBrokers := cfg.CountDistinctProducerBrokers()
+	t.brokers = cfg.CountDistinctProducerBrokers()
 
 	isAutoCommit := false
 	switch strings.ToLower(cfg.CommitMode) {
@@ -70,8 +65,8 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	case kafkalks.CommitModeManual:
 		t.cfg.ProducerId = ""
 	case kafkalks.CommitModeTransaction:
-		if t.cfg.ProducerId == "" || len(producerBrokers) > 1 {
-			log.Warn().Str(semLogTransformerProducerId, cfg.Name).Str("producer-tx-id", t.cfg.ProducerId).Int("no-brokers", len(producerBrokers)).Msg(semLogContext + " commit-mode " + kafkalks.CommitModeTransaction + " not compatible with missing producer-tx-id or multiple brokers.. reverting to " + kafkalks.CommitModeAuto)
+		if t.cfg.ProducerId == "" || len(t.brokers) > 1 {
+			log.Warn().Str(semLogTransformerProducerId, cfg.Name).Str("producer-tx-id", t.cfg.ProducerId).Int("no-brokers", len(t.brokers)).Msg(semLogContext + " commit-mode " + kafkalks.CommitModeTransaction + " not compatible with missing producer-tx-id or multiple brokers.. reverting to " + kafkalks.CommitModeAuto)
 			isAutoCommit = true
 			cfg.CommitMode = kafkalks.CommitModeAuto
 		}
@@ -82,41 +77,20 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	}
 
 	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tx-id", t.cfg.ProducerId).Bool("auto-commit", isAutoCommit).Msg(semLogContext + " transform producer: setting commit params")
-	if len(producerBrokers) > 0 {
+	if len(t.brokers) > 0 {
 		t.producers = make(map[string]KafkaProducerWrapper)
 	} else {
 		log.Warn().Msg(semLogContext + " no output topics configured...")
 	}
 
-	if len(producerBrokers) > 1 {
+	if len(t.brokers) > 1 {
 		cfg.WorkMode = WorkModeMsg
 	}
 
-	for _, brokerName := range producerBrokers {
-
-		kp, err := NewKafkaProducerWrapper2(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny}, cfg.WithSynchDelivery())
-		if err != nil {
-			log.Error().Err(err).Msg(semLogContext)
-			return nil, err
-		}
-		t.producers[brokerName] = kp
-
-		/*
-			p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny})
-			if err != nil {
-				return nil, err
-			}
-
-			var deliveryChannel chan kafka.Event
-			if cfg.WithSynchDelivery() {
-				deliveryChannel = make(chan kafka.Event)
-			}
-			kp := NewKafkaProducerWrapper(cfg.Name, p, deliveryChannel)
-			t.producers[brokerName] = kp
-		*/
-		if cfg.WorkMode == WorkModeBatch {
-			t.msgProducer = NewMessageProducer(cfg.Name, kp, 0, cfg.ToTopics, cfg.RefMetrics.GId)
-		}
+	err = t.createProducers()
+	if err != nil {
+		log.Error().Err(err).Msg(semLogContext + " creating producers failed")
+		return nil, err
 	}
 
 	t.consumer, err = kafkalks.NewKafkaConsumer(util.StringCoalesce(t.cfg.FromTopic.BrokerName, t.cfg.BrokerName), t.cfg.GroupId, isAutoCommit)

@@ -54,8 +54,10 @@ type transformerProducerImpl struct {
 
 	parent Server
 
-	txActive    bool
-	producers   map[string]KafkaProducerWrapper
+	txActive  bool
+	brokers   []string
+	producers map[string]KafkaProducerWrapper
+
 	msgProducer MessageProducer
 	consumer    *kafka.Consumer
 
@@ -78,6 +80,45 @@ func (tp *transformerProducerImpl) Name() string {
 
 func (tp *transformerProducerImpl) SetParent(s Server) {
 	tp.parent = s
+}
+
+func (tp *transformerProducerImpl) createProducers() error {
+	const semLogContext = "t-prod::create-producers"
+
+	ctx, ctxCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer ctxCancel()
+
+	for _, brokerName := range tp.brokers {
+
+		if current, ok := tp.producers[brokerName]; ok {
+			current.Close()
+		}
+
+		kp, err := NewKafkaProducerWrapper2(ctx, brokerName, tp.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny}, tp.cfg.WithSynchDelivery())
+		if err != nil {
+			log.Error().Err(err).Msg(semLogContext)
+			return err
+		}
+		tp.producers[brokerName] = kp
+
+		/*
+			p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny})
+			if err != nil {
+				return nil, err
+			}
+
+			var deliveryChannel chan kafka.Event
+			if cfg.WithSynchDelivery() {
+				deliveryChannel = make(chan kafka.Event)
+			}
+			kp := NewKafkaProducerWrapper(cfg.Name, p, deliveryChannel)
+			t.producers[brokerName] = kp
+		*/
+		if tp.cfg.WorkMode == WorkModeBatch {
+			tp.msgProducer = NewMessageProducer(tp.cfg.Name, kp, 0, tp.cfg.ToTopics, tp.cfg.RefMetrics.GId)
+		}
+	}
+	return nil
 }
 
 func (tp *transformerProducerImpl) Start() {
@@ -208,6 +249,12 @@ func (tp *transformerProducerImpl) pollLoop() {
 						ticker.Stop()
 						tp.shutDown(err)
 						return
+					} else {
+						if isKafkaErrorFatal(err) {
+							log.Error().Msg(semLogContext + " - error is fatal.... recreating producers")
+							err = tp.createProducers()
+							log.Error().Err(err).Msg(semLogContext)
+						}
 					}
 				}
 			}
@@ -230,6 +277,12 @@ func (tp *transformerProducerImpl) pollLoop() {
 					ticker.Stop()
 					tp.shutDown(err)
 					return
+				} else {
+					if isKafkaErrorFatal(err) {
+						log.Error().Msg(semLogContext + " - error is fatal.... recreating producers")
+						err = tp.createProducers()
+						log.Error().Err(err).Msg(semLogContext)
+					}
 				}
 			} else if isMsg {
 				tp.numberOfMessages++
@@ -283,6 +336,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 			abortErr := tp.abortTransaction(context.Background(), false)
 			if abortErr != nil {
 				logKafkaError(abortErr).Msg(semLogContext)
+				err = abortErr
 			}
 			return err
 		}
@@ -295,7 +349,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 				if abortErr != nil {
 					logKafkaError(abortErr).Msg(semLogContext)
 				}
-				return err
+				return util.CoalesceError(abortErr, err)
 			}
 		}
 		return nil
@@ -307,7 +361,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 		if abortErr != nil {
 			logKafkaError(abortErr).Msg(semLogContext)
 		}
-		return err
+		return util.CoalesceError(abortErr, err)
 	} else {
 		err := tp.msgProducer.Close()
 		if err != nil {
@@ -316,7 +370,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 			if abortErr != nil {
 				logKafkaError(abortErr).Msg(semLogContext)
 			}
-			return err
+			return util.CoalesceError(abortErr, err)
 		}
 	}
 
@@ -328,7 +382,7 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 		if abortErr != nil {
 			logKafkaError(abortErr).Msg(semLogContext)
 		}
-		return err
+		return util.CoalesceError(abortErr, err)
 	}
 
 	return nil
@@ -387,18 +441,24 @@ func (tp *transformerProducerImpl) processMessage(e *kafka.Message) (BAMData, er
 				Body:    e.Value,
 			}}
 		default:
-			_ = tp.abortTransaction(context.Background(), true)
 			tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), procErr, sysMetricInfo.AddBAMData(bamData))
-			return sysMetricInfo, procErr
+			abortErr := tp.abortTransaction(context.Background(), true)
+			if abortErr != nil {
+				logKafkaError(abortErr).Msg(semLogContext)
+			}
+			return sysMetricInfo, util.CoalesceError(abortErr, procErr)
 		}
 	}
 
 	err = tp.produce2Topic(msg)
 	if err != nil {
 		logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " error producing output message")
-		_ = tp.abortTransaction(context.Background(), true)
+		abortErr := tp.abortTransaction(context.Background(), true)
+		if abortErr != nil {
+			logKafkaError(abortErr).Msg(semLogContext)
+		}
 		tp.produceMetrics(time.Since(beginOfProcessing).Seconds(), err, sysMetricInfo.AddBAMData(bamData))
-		return sysMetricInfo, err
+		return sysMetricInfo, util.CoalesceError(abortErr, err)
 	}
 
 	err = tp.commitTransaction(context.Background(), true)
