@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MessageProducerBufferSize = 1000
+	MessageProducerBufferSize = 1
 )
 
 type MessageProducer interface {
