@@ -47,12 +47,12 @@ func (e *TransformerProducerError) Error() string { return e.Level + ": " + e.Er
 type transformerProducerImpl struct {
 	cfg *TransformerProducerConfig
 
-	wg           *sync.WaitGroup
-	shutdownSync sync.Once
-	quitc        chan struct{}
-	monitorQuitc chan struct{}
-
-	parent Server
+	wg               *sync.WaitGroup
+	shutdownSync     sync.Once
+	quitc            chan struct{}
+	monitorQuitc     chan struct{}
+	shuttingDownFlag bool
+	parent           Server
 
 	txActive  bool
 	brokers   []string
@@ -202,8 +202,13 @@ func (tp *transformerProducerImpl) monitorProducerEvents(producer KafkaProducerW
 		}
 	}
 
-	close(tp.monitorQuitc)
-	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting from monitor producer events")
+	if tp.shuttingDownFlag {
+		log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting from monitor producer events and closing the monitorQuitc")
+		close(tp.monitorQuitc)
+	} else {
+		log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " exiting from monitor producer events WOUT closing the monitorQuitc")
+	}
+
 }
 
 func (tp *transformerProducerImpl) exitOnError(semLogContext string, err error) bool {
@@ -477,6 +482,8 @@ func (tp *transformerProducerImpl) shutDown(err error) {
 	const semLogContext = "t-prod::shutdown"
 
 	tp.shutdownSync.Do(func() {
+		tp.shuttingDownFlag = true
+
 		if tp.wg != nil {
 			tp.wg.Done()
 		}
@@ -530,7 +537,7 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 
 		tp.partitionsCnt = 0
 		tp.eofCnt = 0
-		tp.metricLabels["event-type"] = "assigned-partitions"
+		tp.metricLabels["event-type"] = "revoked-partitions"
 		_ = tp.produceMetric(nil, MetricsPartitionsEvents, 1, tp.metricLabels)
 		_ = tp.produceMetric(nil, MetricsNumberOfPartitions, float64(len(e.Partitions)), tp.metricLabels)
 	}
