@@ -126,7 +126,11 @@ func (kp KafkaProducerWrapper) BeginTransaction() error {
 }
 
 func (kp KafkaProducerWrapper) AbortTransaction(ctx context.Context) error {
-	return kp.producer.AbortTransaction(ctx)
+	err := kp.producer.AbortTransaction(ctx)
+	if IsKafkaErrorState(err) {
+		return nil
+	}
+	return err
 }
 
 func (kp KafkaProducerWrapper) SendOffsetsToTransaction(ctx context.Context, offsets []kafka.TopicPartition, consumerMetadata *kafka.ConsumerGroupMetadata) error {
