@@ -119,11 +119,20 @@ func (tp *transformerProducerImpl) createProducers() error {
 			tp.msgProducer = NewMessageProducer(tp.cfg.Name, kp, 0, tp.cfg.ToTopics, tp.cfg.RefMetrics.GId)
 		}
 	}
+
+	if !tp.cfg.WithSynchDelivery() {
+		for _, p := range tp.producers {
+			v := p
+			go tp.monitorProducerEvents(v)
+		}
+	}
+
 	return nil
 }
 
 func (tp *transformerProducerImpl) Start() {
 	const semLogContext = "t-prod::start"
+	var err error
 
 	if tp.cfg.StartDelay > 0 {
 		time.Sleep(time.Millisecond * time.Duration(tp.cfg.StartDelay))
@@ -136,18 +145,26 @@ func (tp *transformerProducerImpl) Start() {
 		tp.wg.Add(1)
 	}
 
+	err = tp.createProducers()
+	if err != nil {
+		log.Error().Err(err).Msg(semLogContext + " creating producers failed")
+		return
+	}
+
 	if len(tp.producers) == 0 {
 		log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " no to-topics configured.... skipping monitoring events.")
 	}
 
-	if !tp.cfg.WithSynchDelivery() {
-		for _, p := range tp.producers {
-			v := p
-			go tp.monitorProducerEvents(v)
+	/*
+		if !tp.cfg.WithSynchDelivery() {
+			for _, p := range tp.producers {
+				v := p
+				go tp.monitorProducerEvents(v)
+			}
 		}
-	}
+	*/
 
-	err := tp.consumer.Subscribe(tp.cfg.FromTopic.Name, tp.rebalanceCb)
+	err = tp.consumer.Subscribe(tp.cfg.FromTopic.Name, tp.rebalanceCb)
 	if err != nil {
 		log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " topic subscription error")
 		return

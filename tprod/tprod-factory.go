@@ -87,17 +87,22 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		cfg.WorkMode = WorkModeMsg
 	}
 
-	err = t.createProducers()
-	if err != nil {
-		log.Error().Err(err).Msg(semLogContext + " creating producers failed")
-		return nil, err
-	}
+	/*
+		err = t.createProducers()
+		if err != nil {
+			log.Error().Err(err).Msg(semLogContext + " creating producers failed")
+			return nil, err
+		}
+	*/
 
 	t.consumer, err = kafkalks.NewKafkaConsumer(util.StringCoalesce(t.cfg.FromTopic.BrokerName, t.cfg.BrokerName), t.cfg.GroupId, isAutoCommit)
 	if err != nil {
-		for _, p := range t.producers {
-			p.Close()
-		}
+		/*
+			for _, p := range t.producers {
+				p.Close()
+			}
+		*/
+		logKafkaError(err).Msg(semLogContext + " consumer creation failed")
 		return nil, err
 	}
 
