@@ -99,6 +99,7 @@ func (tp *transformerProducerImpl) createProducers() error {
 			log.Error().Err(err).Msg(semLogContext)
 			return err
 		}
+		log.Error().Str("broker-name", brokerName).Msg(semLogContext)
 		tp.producers[brokerName] = kp
 
 		/*
