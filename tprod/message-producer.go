@@ -22,7 +22,7 @@ type MessageProducer interface {
 }
 
 type messageProducerImpl struct {
-	buffered         bool
+	bufferSize       int
 	producedMessages int
 	DeadLetterTopic  string
 	OutTopicsCfg     []ConfigTopic
@@ -32,9 +32,9 @@ type messageProducerImpl struct {
 	metricsLabels    map[string]string
 }
 
-func NewMessageProducer(name string, producer KafkaProducerWrapper, buffered bool, outs []ConfigTopic, metricsGroupId string) MessageProducer {
+func NewMessageProducer(name string, producer KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
 	return &messageProducerImpl{
-		buffered:       buffered,
+		bufferSize:     bufferSize,
 		producer:       producer,
 		OutTopicsCfg:   outs,
 		metricsGroupId: metricsGroupId,
@@ -44,26 +44,44 @@ func NewMessageProducer(name string, producer KafkaProducerWrapper, buffered boo
 	}
 }
 
-func (p *messageProducerImpl) Produce(msgs ...Message) error {
+func (mp *messageProducerImpl) isBuffered() bool {
+	return mp.bufferSize > 1
+}
 
+func (mp *messageProducerImpl) isOverQuota() bool {
+	return len(mp.messages) >= mp.bufferSize
+}
+
+func (p *messageProducerImpl) Produce(msgs ...Message) error {
+	const semLogContext = "message-producer::produce"
 	var err error
 
-	if p.buffered {
-		p.messages = append(p.messages, msgs...)
-	} else {
-
-		if MessageProducerBufferSize < 2 {
-			p.produce2Topics(msgs)
-			p.producedMessages += len(msgs)
+	producedMsgs := 0
+	if !p.isBuffered() {
+		err = p.produce2Topics(msgs)
+		if err != nil {
+			logKafkaError(err).Msg(semLogContext)
 		} else {
-			p.messages = append(p.messages, msgs...)
-			if len(p.messages) >= MessageProducerBufferSize {
-				err = p.produce2Topics(p.messages)
-				p.producedMessages += len(p.messages)
-				p.messages = nil
+			producedMsgs = len(msgs)
+		}
+	} else {
+		p.messages = append(p.messages, msgs...)
+		if p.isOverQuota() {
+			err = p.produce2Topics(p.messages)
+			if err != nil {
+				logKafkaError(err).Msg(semLogContext)
+			} else {
+				producedMsgs = len(p.messages)
 			}
+			p.messages = nil
 		}
 	}
+
+	p.producedMessages += producedMsgs
+	if err != nil {
+		logKafkaError(err).Msg(semLogContext)
+	}
+
 	return err
 }
 
@@ -74,11 +92,13 @@ func (p *messageProducerImpl) Close() error {
 }
 
 func (p *messageProducerImpl) Flush() error {
-
+	const semLogContext = "message-producer::flush"
 	var err error
 	if len(p.messages) > 0 {
 		err = p.produce2Topics(p.messages)
-		if !p.buffered {
+		if err != nil {
+			logKafkaError(err).Msg(semLogContext)
+		} else {
 			p.producedMessages += len(p.messages)
 		}
 	}
@@ -92,9 +112,6 @@ func (p *messageProducerImpl) Release() {
 }
 
 func (p *messageProducerImpl) NumberOfProducedMessages() int {
-	if p.buffered {
-		return len(p.messages)
-	}
 	return p.producedMessages
 }
 
@@ -117,7 +134,7 @@ func (p *messageProducerImpl) GetTopicConfig(topic TargetTopic) (ConfigTopic, er
 
 func (p *messageProducerImpl) produce2Topics(messages []Message) error {
 	const semLogContext = "message-producer::produce-to-topics"
-	if p.buffered {
+	if p.isBuffered() {
 		log.Info().Int("number-of-messages", len(messages)).Msg("produce2Topics")
 	}
 	for i, m := range messages {
@@ -125,7 +142,7 @@ func (p *messageProducerImpl) produce2Topics(messages []Message) error {
 		if i > 0 && i%20000 == 0 {
 			fl := p.producer.Flush(10000)
 			for fl != 0 {
-				log.Info().Int("flushing", fl).Msg(semLogContext)
+				log.Warn().Int("flushing", fl).Msg(semLogContext)
 				fl = p.producer.Flush(10000)
 			}
 		}
@@ -178,7 +195,7 @@ func (p *messageProducerImpl) produce2Topic(m Message) error {
 		p.metricsLabels["topic-name"] = tcfg.Name
 		p.produceMetric(nil, MetricMessagesToTopic, 1, p.metricsLabels)
 		if err != nil {
-			log.Error().Err(err).Msg(semLogContext)
+			logKafkaError(err).Msg(semLogContext)
 			return err
 		}
 	}

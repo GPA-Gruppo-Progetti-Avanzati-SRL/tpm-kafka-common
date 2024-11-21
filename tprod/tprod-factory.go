@@ -115,7 +115,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 			t.producers[brokerName] = kp
 		*/
 		if cfg.WorkMode == WorkModeBatch {
-			t.msgProducer = NewMessageProducer(cfg.Name, kp, true, cfg.ToTopics, cfg.RefMetrics.GId)
+			t.msgProducer = NewMessageProducer(cfg.Name, kp, 0, cfg.ToTopics, cfg.RefMetrics.GId)
 		}
 	}
 
