@@ -47,7 +47,8 @@ func KafkaErrorRequiresAbort(err error, OnNonKafkaErrors bool) bool {
 
 	var kErr kafka.Error
 	if errors.As(err, &kErr) {
-		return kErr.TxnRequiresAbort()
+		// return kErr.TxnRequiresAbort()
+		return true
 	} else {
 		return OnNonKafkaErrors
 	}
