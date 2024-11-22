@@ -94,7 +94,7 @@ func (tp *transformerProducerImpl) createProducers() error {
 			current.Close()
 		}
 
-		kp, err := NewKafkaProducerWrapper2(ctx, brokerName, tp.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny}, tp.cfg.WithSynchDelivery(), true)
+		kp, err := NewKafkaProducerWrapper(ctx, brokerName, tp.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny}, tp.cfg.WithSynchDelivery(), true)
 		if err != nil {
 			log.Error().Err(err).Msg(semLogContext)
 			return err
@@ -276,7 +276,9 @@ func (tp *transformerProducerImpl) pollLoop() {
 						if isKafkaErrorFatal(err) {
 							log.Error().Msg(semLogContext + " - error is fatal.... recreating producers")
 							err = tp.createProducers()
-							log.Error().Err(err).Msg(semLogContext)
+							if err != nil {
+								log.Error().Err(err).Msg(semLogContext)
+							}
 						}
 					}
 				}
@@ -304,7 +306,9 @@ func (tp *transformerProducerImpl) pollLoop() {
 					if isKafkaErrorFatal(err) {
 						log.Error().Msg(semLogContext + " - error is fatal.... recreating producers")
 						err = tp.createProducers()
-						log.Error().Err(err).Msg(semLogContext)
+						if err != nil {
+							log.Error().Err(err).Msg(semLogContext)
+						}
 					}
 				}
 			} else if isMsg {
@@ -546,24 +550,50 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 		tp.metricLabels["event-type"] = "assigned-partitions"
 		_ = tp.produceMetric(nil, MetricsPartitionsEvents, 1, tp.metricLabels)
 		_ = tp.produceMetric(nil, MetricsNumberOfPartitions, float64(len(e.Partitions)), tp.metricLabels)
-	case kafka.RevokedPartitions:
-		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
-		/*		if err = tp.consumer.Unassign(); err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
-			}*/
-
-		if tp.txActiveUnused {
-			err := tp.abortTransaction(nil, false)
-			if err != nil {
-				logKafkaError(err).Msg(semLogContext)
-			}
+		err := tp.consumer.IncrementalAssign(e.Partitions)
+		if err != nil {
+			logKafkaError(err).Msg(semLogContext + " failed to incrementally assign partitions")
 		}
 
-		tp.partitionsCnt = 0
+	case kafka.RevokedPartitions:
+		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
+		tp.partitionsCnt = len(e.Partitions)
 		tp.eofCnt = 0
 		tp.metricLabels["event-type"] = "revoked-partitions"
 		_ = tp.produceMetric(nil, MetricsPartitionsEvents, 1, tp.metricLabels)
 		_ = tp.produceMetric(nil, MetricsNumberOfPartitions, float64(len(e.Partitions)), tp.metricLabels)
+
+		/*		if err = tp.consumer.Unassign(); err != nil {
+				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
+			}*/
+
+		if tp.consumer.AssignmentLost() {
+			if tp.txActiveUnused {
+				err := tp.abortTransaction(nil, false)
+				if err != nil {
+					logKafkaError(err).Msg(semLogContext)
+					return err
+				}
+			}
+		} else {
+			err := tp.commitTransaction(nil, true)
+			if err != nil {
+				logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
+				return err
+			}
+		}
+
+		err := tp.beginTransaction(true)
+		if err != nil {
+			logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
+			return err
+		}
+
+		err = tp.consumer.IncrementalUnassign(e.Partitions)
+		if err != nil {
+			logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
+			return err
+		}
 	}
 
 	return nil

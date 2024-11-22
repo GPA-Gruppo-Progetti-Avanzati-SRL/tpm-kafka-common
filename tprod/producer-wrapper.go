@@ -19,7 +19,7 @@ type KafkaProducerWrapper struct {
 	mu              *sync.Mutex
 }
 
-func NewKafkaProducerWrapper2(ctx context.Context, brokerName, transactionId string, toppar kafka.TopicPartition, withDeliveryChannel bool, beginTransaction bool) (KafkaProducerWrapper, error) {
+func NewKafkaProducerWrapper(ctx context.Context, brokerName, transactionId string, toppar kafka.TopicPartition, withDeliveryChannel bool, beginTransaction bool) (KafkaProducerWrapper, error) {
 	const semLogContext = "partitioned-message-producer::new-kafka-producer-wrapper"
 	p, err := kafkalks.NewKafkaProducer(context.Background(), brokerName, transactionId, toppar)
 	if err != nil {
@@ -31,12 +31,14 @@ func NewKafkaProducerWrapper2(ctx context.Context, brokerName, transactionId str
 		producerName = fmt.Sprintf("%s-p%d", producerName, int(toppar.Partition))
 	}
 
+	var mu *sync.Mutex
 	var deliveryChannel chan kafka.Event
 	if withDeliveryChannel {
 		deliveryChannel = make(chan kafka.Event)
+		mu = new(sync.Mutex)
 	}
 
-	kp := NewKafkaProducerWrapper(producerName, p, deliveryChannel)
+	kp := KafkaProducerWrapper{name: producerName, producer: p, delivChan: deliveryChannel, mu: mu}
 	if transactionId != "" {
 		kp.isTransactional = true
 		if beginTransaction {
@@ -49,6 +51,7 @@ func NewKafkaProducerWrapper2(ctx context.Context, brokerName, transactionId str
 	return kp, nil
 }
 
+/*
 func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.Event) KafkaProducerWrapper {
 	var mu *sync.Mutex
 	if delivChan != nil {
@@ -56,6 +59,7 @@ func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.E
 	}
 	return KafkaProducerWrapper{name: n, producer: p, delivChan: delivChan, mu: mu}
 }
+*/
 
 func (kp KafkaProducerWrapper) Close() {
 	const semLogContext = "producer-wrapper::close"

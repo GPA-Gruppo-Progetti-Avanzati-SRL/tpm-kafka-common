@@ -186,6 +186,10 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 		_ = cfgMap.SetKey(SocketKeepaliveEnable, lks.cfg.Consumer.SocketKeepaliveEnable)
 	}
 
+	if lks.cfg.Consumer.PartitionAssignmentStrategy != "" {
+		_ = cfgMap.SetKey(PartitionAssignmentStrategy, lks.cfg.Consumer.PartitionAssignmentStrategy)
+	}
+
 	/* Seems to be producer only
 	if lks.cfg.Consumer.RequestTimeoutMs > 0 {
 		_ = cfgMap.SetKey(RequestTimeoutMs, lks.cfg.Consumer.RequestTimeoutMs)

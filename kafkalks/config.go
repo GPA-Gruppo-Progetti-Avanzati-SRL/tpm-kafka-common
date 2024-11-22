@@ -40,6 +40,8 @@ const (
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
 	Debug                                        = "debug"
+	PartitionAssignmentStrategy                  = "partition.assignment.strategy"
+	PartitionAssignmentStrategyCooperativeSticky = "cooperative-sticky"
 
 	// Broker config noyt client TransactionalMaxTimeoutMsPropertyName        = "transaction.max.timeout.ms"
 
@@ -48,20 +50,21 @@ const (
 
 type ConsumerConfig struct {
 	// Consumer related configs
-	IsolationLevel        string `mapstructure:"isolation-level" json:"isolation-level" yaml:"isolation-level"`
-	MaxPollRecords        int    `mapstructure:"max-poll-records" json:"max-poll-records" yaml:"max-poll-records"`
-	AutoOffsetReset       string `mapstructure:"auto-offset-reset" json:"auto-offset-reset" yaml:"auto-offset-reset"`
-	SessionTimeoutMs      int    `mapstructure:"session-timeout-ms" json:"session-timeout-ms" yaml:"session-timeout-ms"`
-	FetchMinBytes         int    `mapstructure:"fetch-min-bytes" json:"fetch-min-bytes" yaml:"fetch-min-bytes"`
-	FetchMaxBytes         int    `mapstructure:"fetch-max-bytes" json:"fetch-max-bytes" yaml:"fetch-max-bytes"`
-	Delay                 int    `mapstructure:"delay" json:"delay" yaml:"delay"`
-	MaxRetry              int    `mapstructure:"max-retry" json:"max-retry" yaml:"max-retry"`
-	EnablePartitionEOF    bool   `mapstructure:"enable-partition-eof" json:"enable-partition-eof" yaml:"enable-partition-eof"`
-	MetadataMaxAgeMs      int    `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
-	SocketKeepaliveEnable bool   `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
 	// RequestTimeoutMs      int    `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
-	ConnectionsMaxIdleMs int `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
-	HeartBeatIntervalMs  int `mapstructure:"heartbeat-interval-ms,omitempty" json:"heartbeat-interval-ms,omitempty" yaml:"heartbeat-interval-ms,omitempty"`
+	IsolationLevel              string `mapstructure:"isolation-level" json:"isolation-level" yaml:"isolation-level"`
+	MaxPollRecords              int    `mapstructure:"max-poll-records" json:"max-poll-records" yaml:"max-poll-records"`
+	AutoOffsetReset             string `mapstructure:"auto-offset-reset" json:"auto-offset-reset" yaml:"auto-offset-reset"`
+	SessionTimeoutMs            int    `mapstructure:"session-timeout-ms" json:"session-timeout-ms" yaml:"session-timeout-ms"`
+	FetchMinBytes               int    `mapstructure:"fetch-min-bytes" json:"fetch-min-bytes" yaml:"fetch-min-bytes"`
+	FetchMaxBytes               int    `mapstructure:"fetch-max-bytes" json:"fetch-max-bytes" yaml:"fetch-max-bytes"`
+	Delay                       int    `mapstructure:"delay" json:"delay" yaml:"delay"`
+	MaxRetry                    int    `mapstructure:"max-retry" json:"max-retry" yaml:"max-retry"`
+	EnablePartitionEOF          bool   `mapstructure:"enable-partition-eof" json:"enable-partition-eof" yaml:"enable-partition-eof"`
+	MetadataMaxAgeMs            int    `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
+	SocketKeepaliveEnable       bool   `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
+	ConnectionsMaxIdleMs        int    `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
+	HeartBeatIntervalMs         int    `mapstructure:"heartbeat-interval-ms,omitempty" json:"heartbeat-interval-ms,omitempty" yaml:"heartbeat-interval-ms,omitempty"`
+	PartitionAssignmentStrategy string `mapstructure:"partition-assignment-strategy,omitempty" json:"partition-assignment-strategy,omitempty" yaml:"partition-assignment-strategy,omitempty"`
 }
 
 type ProducerConfig struct {
