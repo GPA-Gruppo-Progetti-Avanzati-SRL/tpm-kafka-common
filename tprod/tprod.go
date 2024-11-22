@@ -345,7 +345,7 @@ func (tp *transformerProducerImpl) addMessage2Batch(km *kafka.Message) error {
 func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 	const semLogContext = "t-prod::process-batch"
 
-	if tp.cfg.WorkMode != WorkModeBatch {
+	if tp.cfg.WorkMode != WorkModeBatch || tp.processor.BatchSize() == 0 {
 		return nil
 	}
 
