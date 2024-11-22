@@ -383,9 +383,12 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 
 	if err := tp.processor.ProcessBatch(); err != nil {
 		logKafkaError(err).Msg(semLogContext)
-		abortErr := tp.abortTransaction(context.Background(), false)
-		if abortErr != nil {
-			logKafkaError(abortErr).Msg(semLogContext)
+		var abortErr error
+		if KafkaErrorRequiresAbort(err, true) {
+			abortErr = tp.abortTransaction(context.Background(), false)
+			if abortErr != nil {
+				logKafkaError(abortErr).Msg(semLogContext)
+			}
 		}
 		return util.CoalesceError(abortErr, err)
 	} else {

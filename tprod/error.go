@@ -31,6 +31,29 @@ func logKafkaError(err error) *zerolog.Event {
 	return evt
 }
 
+func IsKafkaError(err error) bool {
+	var kErr kafka.Error
+	if errors.As(err, &kErr) {
+		return true
+	}
+
+	return false
+}
+
+func KafkaErrorRequiresAbort(err error, OnNonKafkaErrors bool) bool {
+	if err == nil {
+		return false
+	}
+
+	var kErr kafka.Error
+	if errors.As(err, &kErr) {
+		return kErr.TxnRequiresAbort()
+	} else {
+		return OnNonKafkaErrors
+	}
+
+}
+
 func IsKafkaErrorState(err error) bool {
 	if err == nil {
 		return false
