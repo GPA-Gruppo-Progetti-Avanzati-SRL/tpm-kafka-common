@@ -54,9 +54,9 @@ type transformerProducerImpl struct {
 	shuttingDownFlag bool
 	parent           Server
 
-	txActive  bool
-	brokers   []string
-	producers map[string]KafkaProducerWrapper
+	txActiveUnused bool
+	brokers        []string
+	producers      map[string]KafkaProducerWrapper
 
 	msgProducer MessageProducer
 	consumer    *kafka.Consumer
@@ -94,14 +94,14 @@ func (tp *transformerProducerImpl) createProducers() error {
 			current.Close()
 		}
 
-		kp, err := NewKafkaProducerWrapper2(ctx, brokerName, tp.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny}, tp.cfg.WithSynchDelivery())
+		kp, err := NewKafkaProducerWrapper2(ctx, brokerName, tp.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny}, tp.cfg.WithSynchDelivery(), true)
 		if err != nil {
 			log.Error().Err(err).Msg(semLogContext)
 			return err
 		}
 		log.Error().Str("broker-name", brokerName).Msg(semLogContext)
 		tp.producers[brokerName] = kp
-
+		tp.txActiveUnused = kp.isTransactional
 		/*
 			p, err := kafkalks.NewKafkaProducer(ctx, brokerName, t.cfg.ProducerId, kafka.TopicPartition{Partition: kafka.PartitionAny})
 			if err != nil {
@@ -364,15 +364,18 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 			return err
 		}
 
-		if tp.txActive {
+		if tp.txActiveUnused {
 			log.Info().Msg(semLogContext + " - transaction is active but batch is of size zero... committing")
 			if err := tp.commitTransaction(ctx, false); err != nil {
 				logKafkaError(err).Msg(semLogContext)
-				abortErr := tp.abortTransaction(context.Background(), false)
-				if abortErr != nil {
-					logKafkaError(abortErr).Msg(semLogContext)
-				}
-				return util.CoalesceError(abortErr, err)
+				/*
+					abortErr := tp.abortTransaction(context.Background(), false)
+					if abortErr != nil {
+						logKafkaError(abortErr).Msg(semLogContext)
+					}
+					return util.CoalesceError(abortErr, err)
+				*/
+				return err
 			}
 		}
 		return nil
@@ -401,11 +404,12 @@ func (tp *transformerProducerImpl) processBatch(ctx context.Context) error {
 
 	if err := tp.commitTransaction(ctx, false); err != nil {
 		logKafkaError(err).Msg(semLogContext)
-		abortErr := tp.abortTransaction(context.Background(), false)
-		if abortErr != nil {
-			logKafkaError(abortErr).Msg(semLogContext)
-		}
-		return util.CoalesceError(abortErr, err)
+		//abortErr := tp.abortTransaction(context.Background(), false)
+		//if abortErr != nil {
+		//	logKafkaError(abortErr).Msg(semLogContext)
+		//}
+		//return util.CoalesceError(abortErr, err)
+		return err
 	}
 
 	return nil
@@ -545,7 +549,7 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 			}*/
 
-		if tp.txActive {
+		if tp.txActiveUnused {
 			err := tp.abortTransaction(nil, false)
 			if err != nil {
 				logKafkaError(err).Msg(semLogContext)
@@ -585,7 +589,7 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 					log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 				}*/
 
-		if tp.txActive {
+		if tp.txActiveUnused {
 			err = tp.abortTransaction(nil, false)
 			if err != nil {
 				logKafkaError(err).Msg(semLogContext)
@@ -686,12 +690,12 @@ func (tp *transformerProducerImpl) poll() (bool, error) {
 
 func (tp *transformerProducerImpl) beginTransaction(warnOnRunning bool) error {
 	const semLogContext = "t-prod::begin-transaction"
-	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext)
+	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActiveUnused).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext)
 	if !kafkalks.IsTransactionCommit(tp.cfg.CommitMode) {
 		return nil
 	}
 
-	if tp.txActive {
+	if tp.txActiveUnused {
 		if warnOnRunning {
 			log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " transaction already running...")
 		}
@@ -700,7 +704,7 @@ func (tp *transformerProducerImpl) beginTransaction(warnOnRunning bool) error {
 			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " begin transaction error")
 			return err
 		} else {
-			tp.txActive = true
+			// tp.txActive = true
 		}
 	}
 
@@ -709,7 +713,7 @@ func (tp *transformerProducerImpl) beginTransaction(warnOnRunning bool) error {
 
 func (tp *transformerProducerImpl) abortTransaction(ctx context.Context, warnOnNotRunning bool) error {
 	const semLogContext = "t-prod::abort-transaction"
-	log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext + " aborting transaction...")
+	log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActiveUnused).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext + " aborting transaction...")
 
 	switch tp.cfg.CommitMode {
 	case kafkalks.CommitModeAuto:
@@ -718,19 +722,28 @@ func (tp *transformerProducerImpl) abortTransaction(ctx context.Context, warnOnN
 		log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " no  action on aborting on manual commit...")
 
 	case kafkalks.CommitModeTransaction:
-		if tp.txActive {
+		if tp.txActiveUnused {
 			if err := tp.getProducer().AbortTransaction(ctx); err != nil {
 				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " abort transaction error")
 				return err
 			} else {
 				log.Warn().Msg(semLogContext + " transaction succesfully aborted")
 			}
+
+			_ = rewindConsumer(tp.consumer)
+
+			err := tp.getProducer().BeginTransaction()
+			if err != nil {
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " producer begin transaction")
+				return err
+			}
+
 		} else {
 			if warnOnNotRunning {
 				log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " transaction not active")
 			}
 		}
-		tp.txActive = false
+		// tp.txActive = false
 	default:
 		log.Warn().Str("commit-mode", tp.cfg.CommitMode).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " commit-mode not recognized")
 	}
@@ -740,7 +753,7 @@ func (tp *transformerProducerImpl) abortTransaction(ctx context.Context, warnOnN
 
 func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOnNotRunning bool) error {
 	const semLogContext = "t-prod::commit-transaction"
-	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActive).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext)
+	log.Trace().Str(semLogTransformerProducerId, tp.cfg.Name).Bool("tx-active", tp.txActiveUnused).Bool("enabled", kafkalks.IsTransactionCommit(tp.cfg.CommitMode)).Msg(semLogContext)
 
 	switch tp.cfg.CommitMode {
 	case kafkalks.CommitModeAuto:
@@ -752,39 +765,61 @@ func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOn
 			return err
 		}
 	case kafkalks.CommitModeTransaction:
-		if tp.txActive {
+		if tp.txActiveUnused {
 
 			partitions, err := tp.consumer.Assignment()
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer assignment error")
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer assignment error")
 				return err
 			}
 
 			positions, err := tp.consumer.Position(partitions)
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer position error")
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer position error")
 				return err
 			}
 
 			consumerMetadata, err := tp.consumer.GetConsumerGroupMetadata()
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer get group metadata")
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer get group metadata")
 				return err
 			}
 
-			//fmt.Fprintln(os.Stdout, "ConsumerMetaData: ", consumerMetadata)
-			err = tp.getProducer().SendOffsetsToTransaction(ctx, positions, consumerMetadata)
+			producer := tp.getProducer()
+			// TODO: replaced ctx with nil.
+			err = producer.SendOffsetsToTransaction(nil, positions, consumerMetadata)
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer send offset to transaction")
+				logKafkaError(err).Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer send offset to transaction")
+				err = producer.AbortTransaction(nil)
+				if err != nil {
+					return err
+				}
+
+				_ = rewindConsumer(tp.consumer)
 				return err
 			}
 
-			err = tp.getProducer().CommitTransaction(ctx)
-			tp.txActive = false
+			// TODO: replaced ctx with nil.
+			err = producer.CommitTransaction(nil)
+			// tp.txActive = false
 			if err != nil {
-				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer commit transaction")
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " consumer commit transaction")
+
+				err = producer.AbortTransaction(nil)
+				if err != nil {
+					return err
+				}
+
+				_ = rewindConsumer(tp.consumer)
 				return err
 			}
+
+			err = producer.BeginTransaction()
+			if err != nil {
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " producer begin transaction")
+				return err
+			}
+
 		} else {
 			if warnOnNotRunning {
 				log.Warn().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " transaction not active")

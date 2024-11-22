@@ -33,17 +33,17 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	}
 
 	t := transformerProducerImpl{
-		cfg:           cfg,
-		quitc:         make(chan struct{}),
-		monitorQuitc:  nil,
-		txActive:      false,
-		brokers:       nil,
-		producers:     nil,
-		consumer:      nil,
-		partitionsCnt: 0,
-		eofCnt:        0,
-		processor:     processor,
-		wg:            wg,
+		cfg:            cfg,
+		quitc:          make(chan struct{}),
+		monitorQuitc:   nil,
+		txActiveUnused: false,
+		brokers:        nil,
+		producers:      nil,
+		consumer:       nil,
+		partitionsCnt:  0,
+		eofCnt:         0,
+		processor:      processor,
+		wg:             wg,
 		metricLabels: map[string]string{
 			"name": cfg.Name,
 		},
@@ -56,6 +56,15 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tick-interval", cfg.TickInterval.String()).Msg(semLogContext + " initializing tick interval")
 
 	t.brokers = cfg.CountDistinctProducerBrokers()
+	if len(t.brokers) > 0 {
+		t.producers = make(map[string]KafkaProducerWrapper)
+	} else {
+		log.Warn().Msg(semLogContext + " no output topics configured...")
+	}
+
+	if len(t.brokers) > 1 {
+		cfg.WorkMode = WorkModeMsg
+	}
 
 	isAutoCommit := false
 	switch strings.ToLower(cfg.CommitMode) {
@@ -77,15 +86,6 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 	}
 
 	log.Info().Str(semLogTransformerProducerId, cfg.Name).Str("tx-id", t.cfg.ProducerId).Bool("auto-commit", isAutoCommit).Msg(semLogContext + " transform producer: setting commit params")
-	if len(t.brokers) > 0 {
-		t.producers = make(map[string]KafkaProducerWrapper)
-	} else {
-		log.Warn().Msg(semLogContext + " no output topics configured...")
-	}
-
-	if len(t.brokers) > 1 {
-		cfg.WorkMode = WorkModeMsg
-	}
 
 	/*
 		err = t.createProducers()
