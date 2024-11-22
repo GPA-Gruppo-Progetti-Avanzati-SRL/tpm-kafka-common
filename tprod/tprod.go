@@ -95,8 +95,12 @@ func (tp *transformerProducerImpl) SetParent(s Server) {
 	tp.parent = s
 }
 
-func (tp *transformerProducerImpl) createProducers() error {
+func (tp *transformerProducerImpl) createProducers(onError bool) error {
 	const semLogContext = "t-prod::create-producers"
+	log.Error().Bool("on-error", onError).Msg(semLogContext)
+	if onError {
+		return nil
+	}
 
 	ctx, ctxCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer ctxCancel()
@@ -112,7 +116,6 @@ func (tp *transformerProducerImpl) createProducers() error {
 			log.Error().Err(err).Msg(semLogContext)
 			return err
 		}
-		log.Error().Str("broker-name", brokerName).Msg(semLogContext)
 		tp.producers[brokerName] = kp
 		tp.txActiveUnused = kp.isTransactional
 		/*
@@ -158,7 +161,7 @@ func (tp *transformerProducerImpl) Start() {
 		tp.wg.Add(1)
 	}
 
-	err = tp.createProducers()
+	err = tp.createProducers(false)
 	if err != nil {
 		log.Error().Err(err).Msg(semLogContext + " creating producers failed")
 		return
@@ -288,7 +291,7 @@ func (tp *transformerProducerImpl) pollLoop() {
 					} else {
 						if isKafkaErrorFatal(err) {
 							log.Error().Msg(semLogContext + " - error is fatal.... recreating producers")
-							err = tp.createProducers()
+							err = tp.createProducers(true)
 							if err != nil {
 								log.Error().Err(err).Msg(semLogContext)
 							}
@@ -318,7 +321,7 @@ func (tp *transformerProducerImpl) pollLoop() {
 				} else {
 					if isKafkaErrorFatal(err) {
 						log.Error().Msg(semLogContext + " - error is fatal.... recreating producers")
-						err = tp.createProducers()
+						err = tp.createProducers(true)
 						if err != nil {
 							log.Error().Err(err).Msg(semLogContext)
 						}
