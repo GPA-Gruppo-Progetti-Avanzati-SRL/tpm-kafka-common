@@ -7,7 +7,7 @@ toolchain go1.22.3
 require (
 	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.66
 	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.1.18
-	github.com/confluentinc/confluent-kafka-go/v2 v2.6.1
+	github.com/confluentinc/confluent-kafka-go/v2 v2.5.3
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/rs/zerolog v1.33.0
