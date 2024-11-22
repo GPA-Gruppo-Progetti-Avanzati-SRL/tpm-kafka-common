@@ -31,6 +31,10 @@ type LinkedService struct {
 	sharedProducer SharedProducer
 }
 
+func (lks *LinkedService) Config() Config {
+	return lks.cfg
+}
+
 func (lks *LinkedService) Name() string {
 	return lks.cfg.BrokerName
 }

@@ -59,7 +59,9 @@ type transformerProducerImpl struct {
 	producers      map[string]KafkaProducerWrapper
 
 	msgProducer MessageProducer
-	consumer    *kafka.Consumer
+
+	consumer           *kafka.Consumer
+	consumerBrokerName string
 
 	partitionsCnt int
 	eofCnt        int
@@ -73,6 +75,17 @@ type transformerProducerImpl struct {
 const (
 	DefaultPoolLoopTickInterval = 200 * time.Millisecond
 )
+
+func (tp *transformerProducerImpl) consumerLinkedServiceConfig() (kafkalks.Config, error) {
+	const semLogContext = "t-prod::get-kafka-linked-service-config"
+	lks, err := kafkalks.GetKafkaLinkedService(tp.consumerBrokerName)
+	if err != nil {
+		log.Error().Err(err).Msg(semLogContext)
+		return kafkalks.Config{}, err
+	}
+
+	return lks.Config(), nil
+}
 
 func (tp *transformerProducerImpl) Name() string {
 	return tp.cfg.Name
@@ -538,22 +551,34 @@ func (tp *transformerProducerImpl) shutDown(err error) {
 func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event) error {
 	const semLogContext = "t-prod::rebalance-callback"
 
+	cfg, err := tp.consumerLinkedServiceConfig()
+	if err != nil {
+		return err
+	}
+
+	partitionAssignmentStrategy := cfg.GetPartitionAssignmentStrategy()
 	switch e := ev.(type) {
 	case kafka.AssignedPartitions:
 		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
 
-		/*if err = tp.consumer.Assign(e.Partitions); err != nil {
-			log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
-		}*/
+		switch partitionAssignmentStrategy {
+		case kafkalks.PartitionAssignmentStrategyCooperativeSticky:
+			err = tp.consumer.IncrementalAssign(e.Partitions)
+			if err != nil {
+				logKafkaError(err).Msg(semLogContext + " failed to incrementally assign partitions")
+			}
+		default:
+			err = tp.consumer.Assign(e.Partitions)
+			if err != nil {
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " assigned partitions")
+			}
+		}
+
 		tp.partitionsCnt = len(e.Partitions)
 		tp.eofCnt = 0
 		tp.metricLabels["event-type"] = "assigned-partitions"
 		_ = tp.produceMetric(nil, MetricsPartitionsEvents, 1, tp.metricLabels)
 		_ = tp.produceMetric(nil, MetricsNumberOfPartitions, float64(len(e.Partitions)), tp.metricLabels)
-		err := tp.consumer.IncrementalAssign(e.Partitions)
-		if err != nil {
-			logKafkaError(err).Msg(semLogContext + " failed to incrementally assign partitions")
-		}
 
 	case kafka.RevokedPartitions:
 		log.Warn().Interface("event", e).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
@@ -567,32 +592,45 @@ func (tp *transformerProducerImpl) rebalanceCb(c *kafka.Consumer, ev kafka.Event
 				log.Error().Err(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " revoked partitions")
 			}*/
 
-		if tp.consumer.AssignmentLost() {
-			if tp.txActiveUnused {
-				err := tp.abortTransaction(nil, false)
+		switch partitionAssignmentStrategy {
+		case kafkalks.PartitionAssignmentStrategyCooperativeSticky:
+			if tp.consumer.AssignmentLost() {
+				if tp.txActiveUnused {
+					err = tp.abortTransaction(nil, false)
+					if err != nil {
+						logKafkaError(err).Msg(semLogContext)
+						return err
+					}
+				}
+			} else {
+				err = tp.commitTransaction(nil, true)
 				if err != nil {
-					logKafkaError(err).Msg(semLogContext)
+					logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
 					return err
 				}
 			}
-		} else {
-			err := tp.commitTransaction(nil, true)
+
+			err = tp.beginTransaction(true)
 			if err != nil {
 				logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
 				return err
 			}
-		}
 
-		err := tp.beginTransaction(true)
-		if err != nil {
-			logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
-			return err
-		}
+			err = tp.consumer.IncrementalUnassign(e.Partitions)
+			if err != nil {
+				logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
+				return err
+			}
+		default:
+			err = tp.abortTransaction(nil, false)
+			if err != nil {
+				logKafkaError(err).Msg(semLogContext)
+			}
 
-		err = tp.consumer.IncrementalUnassign(e.Partitions)
-		if err != nil {
-			logKafkaError(err).Msg(semLogContext + " failed to commit transaction")
-			return err
+			err = tp.consumer.Unassign()
+			if err != nil {
+				logKafkaError(err).Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " un-assigned partitions")
+			}
 		}
 	}
 

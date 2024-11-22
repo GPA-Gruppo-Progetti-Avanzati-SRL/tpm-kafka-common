@@ -95,7 +95,8 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 		}
 	*/
 
-	t.consumer, err = kafkalks.NewKafkaConsumer(util.StringCoalesce(t.cfg.FromTopic.BrokerName, t.cfg.BrokerName), t.cfg.GroupId, isAutoCommit)
+	t.consumerBrokerName = util.StringCoalesce(t.cfg.FromTopic.BrokerName, t.cfg.BrokerName)
+	t.consumer, err = kafkalks.NewKafkaConsumer(t.consumerBrokerName, t.cfg.GroupId, isAutoCommit)
 	if err != nil {
 		/*
 			for _, p := range t.producers {

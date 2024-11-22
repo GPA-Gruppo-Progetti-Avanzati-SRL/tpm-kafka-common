@@ -128,6 +128,10 @@ func (c *Config) PostProcess() error {
 	return nil
 }
 
+func (c *Config) GetPartitionAssignmentStrategy() string {
+	return c.Consumer.PartitionAssignmentStrategy
+}
+
 func IsTransactionCommit(m string) bool {
 	return m == CommitModeTransaction
 }
