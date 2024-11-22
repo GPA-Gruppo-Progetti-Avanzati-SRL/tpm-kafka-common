@@ -15,7 +15,7 @@ func NewPartitionedMessageProducer(brokerName string, transactionId string, tps 
 	mp := PartitionedMessageProducer{}
 	prods := make(map[int32]KafkaProducerWrapper)
 	if len(tps) == 0 {
-		p, err := NewKafkaProducerWrapper2(context.Background(), brokerName, transactionId, kafka.TopicPartition{Partition: kafka.PartitionAny}, withDeliveryChannel)
+		p, err := NewKafkaProducerWrapper2(context.Background(), brokerName, transactionId, kafka.TopicPartition{Partition: kafka.PartitionAny}, withDeliveryChannel, true)
 		if err != nil {
 			return PartitionedMessageProducer{}, err
 		}
@@ -24,7 +24,7 @@ func NewPartitionedMessageProducer(brokerName string, transactionId string, tps 
 	} else {
 		mp.isPartitioned = true
 		for _, tp := range tps {
-			p, err := NewKafkaProducerWrapper2(context.Background(), brokerName, transactionId, tp, withDeliveryChannel)
+			p, err := NewKafkaProducerWrapper2(context.Background(), brokerName, transactionId, tp, withDeliveryChannel, true)
 			if err != nil {
 				return PartitionedMessageProducer{}, err
 			}
