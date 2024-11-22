@@ -105,9 +105,9 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 	}
 
 	if transactionalId != "" {
-		transactionalId := strings.Replace(transactionalId, "{uuid}", util.NewUUID(), -1)
 		_ = cfgMap2.SetKey(TransactionalIdPropertyName, transactionalId)
-		_ = cfgMap2.SetKey(TransactionalTimeoutMsPropertyName, lks.cfg.Producer.MaxTimeoutMs)
+		_ = cfgMap2.SetKey(TransactionalTimeoutMsPropertyName, util.IntCoalesce(lks.cfg.Producer.TransactionTimeoutMs, -1))
+		_ = cfgMap2.SetKey(TransactionalMaxTimeoutMsPropertyName, util.IntCoalesce(lks.cfg.Producer.TransactionMaxTimeoutMs, -1))
 	} else {
 		_ = cfgMap2.SetKey("enable.idempotence", true)
 	}

@@ -39,6 +39,7 @@ const (
 	SocketKeepaliveEnable                        = "socket.keepalive.enable" // true
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
+	TransactionalMaxTimeoutMsPropertyName        = "transaction.max.timeout.ms"
 	Debug                                        = "debug"
 
 	KafkaNumberOfDeliveryAttemptsHeaderName = "Kafka-Delivery-Attempts"
@@ -64,17 +65,18 @@ type ConsumerConfig struct {
 
 type ProducerConfig struct {
 	// Producer related configs
-	Acks                  string                          `mapstructure:"acks" json:"acks" yaml:"acks"`
-	MaxTimeoutMs          int                             `mapstructure:"max-timeout-ms" json:"max-timeout-ms" yaml:"max-timeout-ms"`
-	DeliveryTimeout       time.Duration                   `mapstructure:"delivery-timeout"`
-	FlushTimeout          time.Duration                   `mapstructure:"flush-timeout"`
-	MessageSendMaxRetries int                             `mapstructure:"max-retries"`
-	AsyncDeliveryMetrics  promutil.MetricsConfigReference `mapstructure:"async-delivery-metrics,omitempty" yaml:"async-delivery-metrics,omitempty" json:"async-delivery-metrics,omitempty"`
-	MetadataMaxAgeMs      int                             `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
-	SocketKeepaliveEnable bool                            `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
-	RequestTimeoutMs      int                             `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
-	ConnectionsMaxIdleMs  int                             `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
-	MetadataMaxIdleMs     int                             `mapstructure:"metadata-max-idle-ms,omitempty" json:"metadata-max-idle-ms,omitempty" yaml:"metadata-max-idle-ms,omitempty"`
+	Acks                    string                          `mapstructure:"acks" json:"acks" yaml:"acks"`
+	TransactionTimeoutMs    int                             `mapstructure:"transaction-timeout-ms,omitempty" json:"transaction-timeout-ms,omitempty" yaml:"transaction-timeout-ms,omitempty"`
+	TransactionMaxTimeoutMs int                             `mapstructure:"transaction-max-timeout-ms,omitempty" json:"transaction-max-timeout-ms,omitempty" yaml:"transaction.max-timeout-ms,omitempty"`
+	DeliveryTimeout         time.Duration                   `mapstructure:"delivery-timeout"`
+	FlushTimeout            time.Duration                   `mapstructure:"flush-timeout"`
+	MessageSendMaxRetries   int                             `mapstructure:"max-retries"`
+	AsyncDeliveryMetrics    promutil.MetricsConfigReference `mapstructure:"async-delivery-metrics,omitempty" yaml:"async-delivery-metrics,omitempty" json:"async-delivery-metrics,omitempty"`
+	MetadataMaxAgeMs        int                             `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
+	SocketKeepaliveEnable   bool                            `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
+	RequestTimeoutMs        int                             `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
+	ConnectionsMaxIdleMs    int                             `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
+	MetadataMaxIdleMs       int                             `mapstructure:"metadata-max-idle-ms,omitempty" json:"metadata-max-idle-ms,omitempty" yaml:"metadata-max-idle-ms,omitempty"`
 }
 
 var DefaultProducerMetrics = promutil.MetricsConfigReference{

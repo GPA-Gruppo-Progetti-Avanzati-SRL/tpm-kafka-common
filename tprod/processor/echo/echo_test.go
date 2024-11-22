@@ -51,8 +51,8 @@ func TestMain(m *testing.M) {
 			EnablePartitionEOF: true,
 		},
 		Producer: kafkalks.ProducerConfig{
-			Acks:         "all",
-			MaxTimeoutMs: 100000,
+			Acks:                 "all",
+			TransactionTimeoutMs: 100000,
 		},
 	}
 
