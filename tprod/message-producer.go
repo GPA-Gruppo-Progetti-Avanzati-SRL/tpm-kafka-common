@@ -140,7 +140,7 @@ func (p *messageProducerImpl) GetTopicConfig(topic TargetTopic) (ConfigTopic, er
 func (p *messageProducerImpl) produce2Topics(messages []Message) error {
 	const semLogContext = "message-producer::produce-to-topics"
 	if p.isBuffered() {
-		log.Info().Int("number-of-messages", len(messages)).Msg("produce2Topics")
+		log.Warn().Int("number-of-messages", len(messages)).Msg(semLogContext)
 	}
 	for i, m := range messages {
 
