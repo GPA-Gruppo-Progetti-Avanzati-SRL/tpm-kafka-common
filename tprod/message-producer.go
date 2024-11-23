@@ -35,8 +35,11 @@ type messageProducerImpl struct {
 }
 
 func NewMessageProducer(name string, producer KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
+
+	const semLogContext = "message-producer::new"
+	log.Warn().Int("buffer-size", bufferSize).Msg(semLogContext)
 	return &messageProducerImpl{
-		bufferSize:     bufferSize + 1000,
+		bufferSize:     bufferSize,
 		producer:       producer,
 		OutTopicsCfg:   outs,
 		metricsGroupId: metricsGroupId,

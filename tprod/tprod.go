@@ -132,7 +132,7 @@ func (tp *transformerProducerImpl) createProducers(onError bool) error {
 			t.producers[brokerName] = kp
 		*/
 		if tp.cfg.WorkMode == WorkModeBatch {
-			tp.msgProducer = NewMessageProducer(tp.cfg.Name, kp, 0, tp.cfg.ToTopics, tp.cfg.RefMetrics.GId)
+			tp.msgProducer = NewMessageProducer(tp.cfg.Name, kp, tp.cfg.KafkaQueueBufferSize, tp.cfg.ToTopics, tp.cfg.RefMetrics.GId)
 		}
 	}
 
