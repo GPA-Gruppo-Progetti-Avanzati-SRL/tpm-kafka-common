@@ -7,6 +7,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
+	"sync"
 )
 
 const (
@@ -30,6 +31,7 @@ type messageProducerImpl struct {
 	messages         []Message
 	metricsGroupId   string
 	metricsLabels    map[string]string
+	mu               *sync.Mutex
 }
 
 func NewMessageProducer(name string, producer KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
@@ -55,6 +57,9 @@ func (mp *messageProducerImpl) isOverQuota() bool {
 func (p *messageProducerImpl) Produce(msgs ...Message) error {
 	const semLogContext = "message-producer::produce"
 	var err error
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	producedMsgs := 0
 	if !p.isBuffered() {
