@@ -36,7 +36,7 @@ type messageProducerImpl struct {
 
 func NewMessageProducer(name string, producer KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
 	return &messageProducerImpl{
-		bufferSize:     bufferSize,
+		bufferSize:     bufferSize + 1000,
 		producer:       producer,
 		OutTopicsCfg:   outs,
 		metricsGroupId: metricsGroupId,
