@@ -31,7 +31,7 @@ type messageProducerImpl struct {
 	messages         []Message
 	metricsGroupId   string
 	metricsLabels    map[string]string
-	mu               *sync.Mutex
+	mu               sync.Mutex
 }
 
 func NewMessageProducer(name string, producer KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
