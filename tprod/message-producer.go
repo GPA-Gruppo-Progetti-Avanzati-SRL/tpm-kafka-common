@@ -7,6 +7,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
+	"sync"
 )
 
 const (
@@ -30,9 +31,13 @@ type messageProducerImpl struct {
 	messages         []Message
 	metricsGroupId   string
 	metricsLabels    map[string]string
+	mu               sync.Mutex
 }
 
 func NewMessageProducer(name string, producer KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
+	const semLogContext = "message-producer::new"
+	log.Warn().Int("buffer-size", bufferSize).Msg(semLogContext)
+
 	return &messageProducerImpl{
 		bufferSize:     bufferSize,
 		producer:       producer,
@@ -55,6 +60,9 @@ func (mp *messageProducerImpl) isOverQuota() bool {
 func (p *messageProducerImpl) Produce(msgs ...Message) error {
 	const semLogContext = "message-producer::produce"
 	var err error
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	producedMsgs := 0
 	if !p.isBuffered() {
@@ -135,7 +143,7 @@ func (p *messageProducerImpl) GetTopicConfig(topic TargetTopic) (ConfigTopic, er
 func (p *messageProducerImpl) produce2Topics(messages []Message) error {
 	const semLogContext = "message-producer::produce-to-topics"
 	if p.isBuffered() {
-		log.Info().Int("number-of-messages", len(messages)).Msg("produce2Topics")
+		log.Warn().Int("number-of-messages", len(messages)).Msg(semLogContext)
 	}
 	for i, m := range messages {
 

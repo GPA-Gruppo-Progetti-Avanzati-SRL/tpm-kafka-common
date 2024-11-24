@@ -98,9 +98,9 @@ func (tp *transformerProducerImpl) SetParent(s Server) {
 func (tp *transformerProducerImpl) createProducers(onError bool) error {
 	const semLogContext = "t-prod::create-producers"
 	log.Error().Bool("on-error", onError).Msg(semLogContext)
-	if onError {
-		return nil
-	}
+	//if onError {
+	//	return nil
+	//}
 
 	ctx, ctxCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer ctxCancel()
@@ -132,7 +132,7 @@ func (tp *transformerProducerImpl) createProducers(onError bool) error {
 			t.producers[brokerName] = kp
 		*/
 		if tp.cfg.WorkMode == WorkModeBatch {
-			tp.msgProducer = NewMessageProducer(tp.cfg.Name, kp, 0, tp.cfg.ToTopics, tp.cfg.RefMetrics.GId)
+			tp.msgProducer = NewMessageProducer(tp.cfg.Name, kp, tp.cfg.KafkaQueueBufferSize, tp.cfg.ToTopics, tp.cfg.RefMetrics.GId)
 		}
 	}
 

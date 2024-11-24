@@ -59,6 +59,7 @@ type OnErrorPolicy struct {
 type TransformerProducerConfig struct {
 	Name                    string                           `yaml:"name" mapstructure:"name" json:"name"`
 	WorkMode                string                           `yaml:"work-mode" mapstructure:"work-mode" json:"work-mode"`
+	KafkaQueueBufferSize    int                              `yaml:"mp-buffer-size,omitempty" mapstructure:"mp-buffer-size,omitempty" json:"mp-buffer-size,omitempty"`
 	TickInterval            time.Duration                    `yaml:"tick-interval,omitempty" mapstructure:"tick-interval,omitempty" json:"tick-interval,omitempty"`
 	OnError                 string                           `yaml:"on-error,omitempty" mapstructure:"on-error,omitempty" json:"on-error,omitempty"` // Possible values: dead-letter, exit
 	OnErrors                []OnErrorPolicy                  `yaml:"on-errors,omitempty" mapstructure:"on-errors,omitempty" json:"on-errors,omitempty"`
