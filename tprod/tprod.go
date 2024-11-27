@@ -55,7 +55,7 @@ type transformerProducerImpl struct {
 	parent           Server
 
 	brokers   []string
-	producers map[string]KafkaProducerWrapper
+	producers map[string]*KafkaProducerWrapper
 
 	msgProducer MessageProducer
 
@@ -197,7 +197,7 @@ func (tp *transformerProducerImpl) Close() {
 	close(tp.quitc)
 }
 
-func (tp *transformerProducerImpl) monitorProducerEvents(producer KafkaProducerWrapper) {
+func (tp *transformerProducerImpl) monitorProducerEvents(producer *KafkaProducerWrapper) {
 	const semLogContext = "t-prod::monitor-producer"
 	log.Info().Str(semLogTransformerProducerId, tp.cfg.Name).Msg(semLogContext + " starting monitor producer events")
 
@@ -895,16 +895,16 @@ func (tp *transformerProducerImpl) commitTransaction(ctx context.Context, warnOn
 	return nil
 }
 
-func (tp *transformerProducerImpl) getProducerForTopic(topicCfg *ConfigTopic) (KafkaProducerWrapper, error) {
+func (tp *transformerProducerImpl) getProducerForTopic(topicCfg *ConfigTopic) (*KafkaProducerWrapper, error) {
 	n := util.StringCoalesce(topicCfg.BrokerName, tp.cfg.BrokerName)
 	if p, ok := tp.producers[n]; ok {
 		return p, nil
 	}
 
-	return KafkaProducerWrapper{}, fmt.Errorf("cannot find producer for topic %s in broker %s", topicCfg.Name, n)
+	return nil, fmt.Errorf("cannot find producer for topic %s in broker %s", topicCfg.Name, n)
 }
 
-func (tp *transformerProducerImpl) getProducer() KafkaProducerWrapper {
+func (tp *transformerProducerImpl) getProducer() *KafkaProducerWrapper {
 
 	if len(tp.producers) == 1 {
 		for _, p := range tp.producers {

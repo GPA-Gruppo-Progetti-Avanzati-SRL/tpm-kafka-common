@@ -27,14 +27,14 @@ type messageProducerImpl struct {
 	producedMessages int
 	DeadLetterTopic  string
 	OutTopicsCfg     []ConfigTopic
-	producer         KafkaProducerWrapper
+	producer         *KafkaProducerWrapper
 	messages         []Message
 	metricsGroupId   string
 	metricsLabels    map[string]string
 	mu               sync.Mutex
 }
 
-func NewMessageProducer(name string, producer KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
+func NewMessageProducer(name string, producer *KafkaProducerWrapper, bufferSize int, outs []ConfigTopic, metricsGroupId string) MessageProducer {
 	const semLogContext = "message-producer::new"
 	log.Warn().Int("buffer-size", bufferSize).Msg(semLogContext)
 

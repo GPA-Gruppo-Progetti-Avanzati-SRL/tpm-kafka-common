@@ -6,14 +6,14 @@ import (
 )
 
 type PartitionedMessageProducer struct {
-	producers     map[int32]KafkaProducerWrapper
+	producers     map[int32]*KafkaProducerWrapper
 	isPartitioned bool
 }
 
 func NewPartitionedMessageProducer(brokerName string, transactionId string, tps kafka.TopicPartitions, withDeliveryChannel bool) (PartitionedMessageProducer, error) {
 	const semLogContext = "partitioned-message-producer::new"
 	mp := PartitionedMessageProducer{}
-	prods := make(map[int32]KafkaProducerWrapper)
+	prods := make(map[int32]*KafkaProducerWrapper)
 	if len(tps) == 0 {
 		p, err := NewKafkaProducerWrapper(context.Background(), brokerName, transactionId, kafka.TopicPartition{Partition: kafka.PartitionAny}, withDeliveryChannel, true)
 		if err != nil {

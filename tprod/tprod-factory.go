@@ -56,7 +56,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 
 	t.brokers = cfg.CountDistinctProducerBrokers()
 	if len(t.brokers) > 0 {
-		t.producers = make(map[string]KafkaProducerWrapper)
+		t.producers = make(map[string]*KafkaProducerWrapper)
 	} else {
 		log.Warn().Msg(semLogContext + " no output topics configured...")
 	}

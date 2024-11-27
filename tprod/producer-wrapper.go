@@ -20,11 +20,11 @@ type KafkaProducerWrapper struct {
 	mu                 *sync.Mutex
 }
 
-func NewKafkaProducerWrapper(ctx context.Context, brokerName, transactionId string, toppar kafka.TopicPartition, withDeliveryChannel bool, beginTransaction bool) (KafkaProducerWrapper, error) {
+func NewKafkaProducerWrapper(ctx context.Context, brokerName, transactionId string, toppar kafka.TopicPartition, withDeliveryChannel bool, beginTransaction bool) (*KafkaProducerWrapper, error) {
 	const semLogContext = "partitioned-message-producer::new-kafka-producer-wrapper"
 	p, err := kafkalks.NewKafkaProducer(context.Background(), brokerName, transactionId, toppar)
 	if err != nil {
-		return KafkaProducerWrapper{}, err
+		return nil, err
 	}
 
 	producerName := brokerName
@@ -39,7 +39,7 @@ func NewKafkaProducerWrapper(ctx context.Context, brokerName, transactionId stri
 		mu = new(sync.Mutex)
 	}
 
-	kp := KafkaProducerWrapper{name: producerName, producer: p, delivChan: deliveryChannel, mu: mu}
+	kp := &KafkaProducerWrapper{name: producerName, producer: p, delivChan: deliveryChannel, mu: mu}
 	if transactionId != "" {
 		kp.isTransactional = true
 		if beginTransaction {
@@ -64,7 +64,7 @@ func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.E
 }
 */
 
-func (kp KafkaProducerWrapper) Close() {
+func (kp *KafkaProducerWrapper) Close() {
 	const semLogContext = "producer-wrapper::close"
 	var err error
 
@@ -84,7 +84,7 @@ func (kp KafkaProducerWrapper) Close() {
 	}
 }
 
-func (kp KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
+func (kp *KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
 	const semLogContext = "producer-wrapper::produce"
 	var err error
 	st := http.StatusInternalServerError
@@ -114,11 +114,11 @@ func (kp KafkaProducerWrapper) Produce(m *kafka.Message) (int, error) {
 	return st, err
 }
 
-func (kp KafkaProducerWrapper) Events() chan kafka.Event {
+func (kp *KafkaProducerWrapper) Events() chan kafka.Event {
 	return kp.producer.Events()
 }
 
-func (kp KafkaProducerWrapper) processDeliveryEvent(evt kafka.Event) error {
+func (kp *KafkaProducerWrapper) processDeliveryEvent(evt kafka.Event) error {
 	const semLogContext = "producer-wrapper::process-delivery-event"
 	var err error
 	switch ev := evt.(type) {
@@ -133,15 +133,15 @@ func (kp KafkaProducerWrapper) processDeliveryEvent(evt kafka.Event) error {
 	return err
 }
 
-func (kp KafkaProducerWrapper) Flush(n int) int {
+func (kp *KafkaProducerWrapper) Flush(n int) int {
 	return kp.producer.Flush(n)
 }
 
-func (kp KafkaProducerWrapper) IsInTransaction() bool {
+func (kp *KafkaProducerWrapper) IsInTransaction() bool {
 	return kp.isTransactional && kp.transactionStarted
 }
 
-func (kp KafkaProducerWrapper) BeginTransaction() error {
+func (kp *KafkaProducerWrapper) BeginTransaction() error {
 	const semLogContext = "producer-wrapper::begin-transaction"
 	// Is in transaction can return false either if is not transactional or actually is not in transaction....
 	if kp.isTransactional {
@@ -159,7 +159,7 @@ func (kp KafkaProducerWrapper) BeginTransaction() error {
 	return nil
 }
 
-func (kp KafkaProducerWrapper) AbortTransaction(ctx context.Context) error {
+func (kp *KafkaProducerWrapper) AbortTransaction(ctx context.Context) error {
 	const semLogContext = "producer-wrapper::abort-transaction"
 	if kp.isTransactional {
 		if kp.IsInTransaction() {
@@ -178,7 +178,7 @@ func (kp KafkaProducerWrapper) AbortTransaction(ctx context.Context) error {
 	return nil
 }
 
-func (kp KafkaProducerWrapper) CommitTransaction(ctx context.Context) error {
+func (kp *KafkaProducerWrapper) CommitTransaction(ctx context.Context) error {
 	const semLogContext = "producer-wrapper::commit-transaction"
 	if kp.isTransactional {
 		if kp.IsInTransaction() {
@@ -194,7 +194,7 @@ func (kp KafkaProducerWrapper) CommitTransaction(ctx context.Context) error {
 	return nil
 }
 
-func (kp KafkaProducerWrapper) SendOffsetsToTransaction(ctx context.Context, offsets []kafka.TopicPartition, consumerMetadata *kafka.ConsumerGroupMetadata) error {
+func (kp *KafkaProducerWrapper) SendOffsetsToTransaction(ctx context.Context, offsets []kafka.TopicPartition, consumerMetadata *kafka.ConsumerGroupMetadata) error {
 	const semLogContext = "producer-wrapper::send-offset-2-transaction"
 	if kp.isTransactional {
 		log.Info().Msg(semLogContext)
@@ -207,7 +207,7 @@ func (kp KafkaProducerWrapper) SendOffsetsToTransaction(ctx context.Context, off
 // CommitTransactionForInputPartition sends the consumer offsets for
 // the given input partition and commits the current transaction.
 // A new transaction will be started when done.
-func (kp KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kafka.Consumer, toppar kafka.TopicPartition) error {
+func (kp *KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kafka.Consumer, toppar kafka.TopicPartition) error {
 	const semLogContext = "producer-wrapper::commit-tx-for-input-partition"
 	position, err := consumer.Position([]kafka.TopicPartition{toppar})
 	if err != nil {
@@ -253,7 +253,7 @@ func (kp KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kafk
 // rewindConsumerPosition rewinds the consumer to the last committed offset or
 // the beginning of the partition if there is no committed offset.
 // This is to be used when the current transaction is aborted.
-func (kp KafkaProducerWrapper) rewindConsumerPosition(consumer *kafka.Consumer, toppar kafka.TopicPartition) error {
+func (kp *KafkaProducerWrapper) rewindConsumerPosition(consumer *kafka.Consumer, toppar kafka.TopicPartition) error {
 	const semLogContext = "producer-wrapper::rewind-consumer-position"
 	committed, err := consumer.Committed([]kafka.TopicPartition{toppar}, 10*1000 /* 10s */)
 	if err != nil {
