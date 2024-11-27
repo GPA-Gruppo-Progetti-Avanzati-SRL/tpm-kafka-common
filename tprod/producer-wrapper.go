@@ -171,7 +171,7 @@ func (kp *KafkaProducerWrapper) AbortTransaction(ctx context.Context) error {
 			}
 			return err
 		} else {
-			log.Warn().Msg(semLogContext + " - producer NOT in transaction")
+			log.Info().Msg(semLogContext + " - producer NOT in transaction")
 		}
 	}
 
@@ -187,7 +187,7 @@ func (kp *KafkaProducerWrapper) CommitTransaction(ctx context.Context) error {
 			kp.transactionStarted = false
 			return err
 		} else {
-			log.Warn().Msg(semLogContext + " - producer NOT in transaction")
+			log.Info().Msg(semLogContext + " - producer NOT in transaction")
 		}
 	}
 
