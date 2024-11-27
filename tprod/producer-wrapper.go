@@ -153,7 +153,7 @@ func (kp *KafkaProducerWrapper) BeginTransaction() error {
 			}
 			return err
 		} else {
-			log.Warn().Msg(semLogContext + " - producer already in transaction")
+			log.Info().Msg(semLogContext + " - producer already in transaction")
 		}
 	}
 	return nil
