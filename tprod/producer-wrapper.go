@@ -12,11 +12,12 @@ import (
 )
 
 type KafkaProducerWrapper struct {
-	name            string
-	producer        *kafka.Producer
-	isTransactional bool
-	delivChan       chan kafka.Event
-	mu              *sync.Mutex
+	name               string
+	producer           *kafka.Producer
+	isTransactional    bool
+	transactionStarted bool
+	delivChan          chan kafka.Event
+	mu                 *sync.Mutex
 }
 
 func NewKafkaProducerWrapper(ctx context.Context, brokerName, transactionId string, toppar kafka.TopicPartition, withDeliveryChannel bool, beginTransaction bool) (KafkaProducerWrapper, error) {
@@ -46,6 +47,8 @@ func NewKafkaProducerWrapper(ctx context.Context, brokerName, transactionId stri
 			if err != nil {
 				return kp, err
 			}
+		} else {
+			log.Warn().Msg(semLogContext + " - transactional producer created without starting transaction")
 		}
 	}
 	return kp, nil
@@ -64,15 +67,14 @@ func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.E
 func (kp KafkaProducerWrapper) Close() {
 	const semLogContext = "producer-wrapper::close"
 	var err error
-	if kp.isTransactional {
-		err = kp.producer.AbortTransaction(context.Background())
-		if err != nil {
-			if err.(kafka.Error).Code() == kafka.ErrState {
-				// No transaction in progress, ignore the error.
-				err = nil
-			} else {
-				logKafkaError(err).Msg(semLogContext + " - failed to abort transaction")
-			}
+
+	err = kp.AbortTransaction(context.Background())
+	if err != nil {
+		if err.(kafka.Error).Code() == kafka.ErrState {
+			// No transaction in progress, ignore the error.
+			err = nil
+		} else {
+			logKafkaError(err).Msg(semLogContext + " - failed to abort transaction")
 		}
 	}
 
@@ -135,11 +137,24 @@ func (kp KafkaProducerWrapper) Flush(n int) int {
 	return kp.producer.Flush(n)
 }
 
+func (kp KafkaProducerWrapper) IsInTransaction() bool {
+	return kp.isTransactional && kp.transactionStarted
+}
+
 func (kp KafkaProducerWrapper) BeginTransaction() error {
 	const semLogContext = "producer-wrapper::begin-transaction"
+	// Is in transaction can return false either if is not transactional or actually is not in transaction....
 	if kp.isTransactional {
-		log.Info().Msg(semLogContext)
-		return kp.producer.BeginTransaction()
+		if !kp.IsInTransaction() {
+			log.Info().Msg(semLogContext)
+			err := kp.producer.BeginTransaction()
+			if err == nil {
+				kp.transactionStarted = true
+			}
+			return err
+		} else {
+			log.Warn().Msg(semLogContext + " - producer already in transaction")
+		}
 	}
 	return nil
 }
@@ -147,12 +162,33 @@ func (kp KafkaProducerWrapper) BeginTransaction() error {
 func (kp KafkaProducerWrapper) AbortTransaction(ctx context.Context) error {
 	const semLogContext = "producer-wrapper::abort-transaction"
 	if kp.isTransactional {
-		log.Info().Msg(semLogContext)
-		err := kp.producer.AbortTransaction(ctx)
-		if IsKafkaErrorState(err) {
-			return nil
+		if kp.IsInTransaction() {
+			log.Info().Msg(semLogContext)
+			err := kp.producer.AbortTransaction(ctx)
+			kp.transactionStarted = false
+			if IsKafkaErrorState(err) {
+				return nil
+			}
+			return err
+		} else {
+			log.Warn().Msg(semLogContext + " - producer NOT in transaction")
 		}
-		return err
+	}
+
+	return nil
+}
+
+func (kp KafkaProducerWrapper) CommitTransaction(ctx context.Context) error {
+	const semLogContext = "producer-wrapper::commit-transaction"
+	if kp.isTransactional {
+		if kp.IsInTransaction() {
+			log.Info().Msg(semLogContext)
+			err := kp.producer.CommitTransaction(ctx)
+			kp.transactionStarted = false
+			return err
+		} else {
+			log.Warn().Msg(semLogContext + " - producer NOT in transaction")
+		}
 	}
 
 	return nil
@@ -163,16 +199,6 @@ func (kp KafkaProducerWrapper) SendOffsetsToTransaction(ctx context.Context, off
 	if kp.isTransactional {
 		log.Info().Msg(semLogContext)
 		return kp.producer.SendOffsetsToTransaction(ctx, offsets, consumerMetadata)
-	}
-
-	return nil
-}
-
-func (kp KafkaProducerWrapper) CommitTransaction(ctx context.Context) error {
-	const semLogContext = "producer-wrapper::commit-transaction"
-	if kp.isTransactional {
-		log.Info().Msg(semLogContext)
-		return kp.producer.CommitTransaction(ctx)
 	}
 
 	return nil
