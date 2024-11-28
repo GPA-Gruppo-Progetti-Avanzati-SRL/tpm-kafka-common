@@ -110,7 +110,7 @@ func (p *messageProducerImpl) Flush() error {
 			p.producedMessages += len(p.messages)
 		}
 	}
-
+	p.messages = nil
 	return err
 }
 
