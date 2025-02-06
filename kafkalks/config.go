@@ -71,15 +71,16 @@ type ProducerConfig struct {
 	// Producer related configs
 	Acks                  string                          `mapstructure:"acks" json:"acks" yaml:"acks"`
 	TransactionTimeoutMs  int                             `mapstructure:"transaction-timeout-ms,omitempty" json:"transaction-timeout-ms,omitempty" yaml:"transaction-timeout-ms,omitempty"`
-	DeliveryTimeout       time.Duration                   `mapstructure:"delivery-timeout"`
-	FlushTimeout          time.Duration                   `mapstructure:"flush-timeout"`
-	MessageSendMaxRetries int                             `mapstructure:"max-retries"`
+	DeliveryTimeout       time.Duration                   `mapstructure:"delivery-timeout,omitempty" json:"delivery-timeout,omitempty" yaml:"delivery-timeout,omitempty"`
+	FlushTimeout          time.Duration                   `mapstructure:"flush-timeout,omitempty" json:"flush-timeout,omitempty" yaml:"flush-timeout,omitempty"`
+	MessageSendMaxRetries int                             `mapstructure:"max-retries,omitempty" json:"max-retries,omitempty" yaml:"max-retries,omitempty"`
 	AsyncDeliveryMetrics  promutil.MetricsConfigReference `mapstructure:"async-delivery-metrics,omitempty" yaml:"async-delivery-metrics,omitempty" json:"async-delivery-metrics,omitempty"`
 	MetadataMaxAgeMs      int                             `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
 	SocketKeepaliveEnable bool                            `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
 	RequestTimeoutMs      int                             `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
 	ConnectionsMaxIdleMs  int                             `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
 	MetadataMaxIdleMs     int                             `mapstructure:"metadata-max-idle-ms,omitempty" json:"metadata-max-idle-ms,omitempty" yaml:"metadata-max-idle-ms,omitempty"`
+	LingerMs              int                             `mapstructure:"linger-ms,omitempty" json:"linger-ms,omitempty" yaml:"linger-ms,omitempty"`
 }
 
 var DefaultProducerMetrics = promutil.MetricsConfigReference{

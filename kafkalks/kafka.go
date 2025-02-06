@@ -88,6 +88,10 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		_ = cfgMap2.SetKey(RequestTimeoutMs, lks.cfg.Producer.RequestTimeoutMs)
 	}
 
+	if lks.cfg.Producer.LingerMs > 0 {
+		_ = cfgMap2.SetKey(LingerMs, lks.cfg.Producer.LingerMs)
+	}
+
 	if lks.cfg.Producer.MetadataMaxAgeMs > 0 {
 		_ = cfgMap2.SetKey(MetadataMaxAgeMs, lks.cfg.Producer.MetadataMaxAgeMs)
 	}
