@@ -88,9 +88,21 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		_ = cfgMap2.SetKey(RequestTimeoutMs, lks.cfg.Producer.RequestTimeoutMs)
 	}
 
-	if lks.cfg.Producer.LingerMs > 0 {
-		_ = cfgMap2.SetKey(LingerMs, lks.cfg.Producer.LingerMs)
+	// A value of -1 triggers a set to zero. Not using the zero since its the default value for ints... and should match the default value of linger.
+	// should be possible to set as pointer
+	if lks.cfg.Producer.LingerMs != nil {
+		_ = cfgMap2.SetKey(LingerMs, *lks.cfg.Producer.LingerMs)
 	}
+
+	/*
+		switch {
+		case lks.cfg.Producer.LingerMs == 0:
+		case lks.cfg.Producer.LingerMs < 0:
+			_ = cfgMap2.SetKey(LingerMs, 0)
+		case lks.cfg.Producer.LingerMs > 0:
+			_ = cfgMap2.SetKey(LingerMs, lks.cfg.Producer.LingerMs)
+		}
+	*/
 
 	if lks.cfg.Producer.MetadataMaxAgeMs > 0 {
 		_ = cfgMap2.SetKey(MetadataMaxAgeMs, lks.cfg.Producer.MetadataMaxAgeMs)

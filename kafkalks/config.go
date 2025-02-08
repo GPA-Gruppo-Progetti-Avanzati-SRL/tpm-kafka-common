@@ -80,7 +80,7 @@ type ProducerConfig struct {
 	RequestTimeoutMs      int                             `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
 	ConnectionsMaxIdleMs  int                             `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
 	MetadataMaxIdleMs     int                             `mapstructure:"metadata-max-idle-ms,omitempty" json:"metadata-max-idle-ms,omitempty" yaml:"metadata-max-idle-ms,omitempty"`
-	LingerMs              int                             `mapstructure:"linger-ms,omitempty" json:"linger-ms,omitempty" yaml:"linger-ms,omitempty"`
+	LingerMs              *int                            `mapstructure:"linger-ms,omitempty" json:"linger-ms,omitempty" yaml:"linger-ms,omitempty"`
 }
 
 var DefaultProducerMetrics = promutil.MetricsConfigReference{
