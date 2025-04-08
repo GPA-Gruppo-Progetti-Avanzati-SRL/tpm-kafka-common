@@ -80,20 +80,6 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		_ = cfgMap2.SetKey(Debug, lks.cfg.Debug)
 	}
 
-	if lks.cfg.Producer.SocketKeepaliveEnable {
-		_ = cfgMap2.SetKey(SocketKeepaliveEnable, lks.cfg.Producer.SocketKeepaliveEnable)
-	}
-
-	if lks.cfg.Producer.RequestTimeoutMs > 0 {
-		_ = cfgMap2.SetKey(RequestTimeoutMs, lks.cfg.Producer.RequestTimeoutMs)
-	}
-
-	// A value of -1 triggers a set to zero. Not using the zero since its the default value for ints... and should match the default value of linger.
-	// should be possible to set as pointer
-	if lks.cfg.Producer.LingerMs != nil {
-		_ = cfgMap2.SetKey(LingerMs, *lks.cfg.Producer.LingerMs)
-	}
-
 	/*
 		switch {
 		case lks.cfg.Producer.LingerMs == 0:
@@ -104,24 +90,42 @@ func (lks *LinkedService) NewProducer(ctx context.Context, transactionalId strin
 		}
 	*/
 
-	if lks.cfg.Producer.MetadataMaxAgeMs > 0 {
-		_ = cfgMap2.SetKey(MetadataMaxAgeMs, lks.cfg.Producer.MetadataMaxAgeMs)
-	}
-
 	if lks.cfg.Producer.ConnectionsMaxIdleMs > 0 {
 		_ = cfgMap2.SetKey(ConnectionsMaxIdleMs, lks.cfg.Producer.ConnectionsMaxIdleMs)
-	}
-
-	if lks.cfg.Producer.MetadataMaxIdleMs > 0 {
-		_ = cfgMap2.SetKey(MetadataMaxIdleMs, lks.cfg.Producer.MetadataMaxIdleMs)
 	}
 
 	if lks.cfg.Producer.DeliveryTimeout != 0 {
 		_ = cfgMap2.SetKey(DeliveryTimeoutMs, int(lks.cfg.Producer.DeliveryTimeout.Milliseconds()))
 	}
 
+	// A value of -1 triggers a set to zero. Not using the zero since its the default value for ints... and should match the default value of linger.
+	// should be possible to set as pointer
+	if lks.cfg.Producer.LingerMs != nil {
+		_ = cfgMap2.SetKey(LingerMs, *lks.cfg.Producer.LingerMs)
+	}
+
 	if lks.cfg.Producer.MessageSendMaxRetries > 0 {
 		_ = cfgMap2.SetKey(MessageSendMaxRetries, lks.cfg.Producer.MessageSendMaxRetries)
+	}
+
+	if lks.cfg.Producer.MetadataMaxAgeMs > 0 {
+		_ = cfgMap2.SetKey(MetadataMaxAgeMs, lks.cfg.Producer.MetadataMaxAgeMs)
+	}
+
+	if lks.cfg.Producer.MetadataMaxIdleMs > 0 {
+		_ = cfgMap2.SetKey(MetadataMaxIdleMs, lks.cfg.Producer.MetadataMaxIdleMs)
+	}
+
+	if lks.cfg.Producer.RequestTimeoutMs > 0 {
+		_ = cfgMap2.SetKey(RequestTimeoutMs, lks.cfg.Producer.RequestTimeoutMs)
+	}
+
+	if lks.cfg.Producer.RetryBackOff != 0 {
+		_ = cfgMap2.SetKey(RetryBackOffMs, int(lks.cfg.Producer.RetryBackOff.Milliseconds()))
+	}
+
+	if lks.cfg.Producer.SocketKeepaliveEnable {
+		_ = cfgMap2.SetKey(SocketKeepaliveEnable, lks.cfg.Producer.SocketKeepaliveEnable)
 	}
 
 	if transactionalId != "" {
@@ -202,23 +206,11 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 		GoApplicationRebalanceEnablePropertyName: true,
 	}
 
-	if lks.cfg.Consumer.SocketKeepaliveEnable {
-		_ = cfgMap.SetKey(SocketKeepaliveEnable, lks.cfg.Consumer.SocketKeepaliveEnable)
-	}
-
-	if lks.cfg.Consumer.PartitionAssignmentStrategy != "" {
-		_ = cfgMap.SetKey(PartitionAssignmentStrategy, lks.cfg.Consumer.PartitionAssignmentStrategy)
-	}
-
 	/* Seems to be producer only
 	if lks.cfg.Consumer.RequestTimeoutMs > 0 {
 		_ = cfgMap.SetKey(RequestTimeoutMs, lks.cfg.Consumer.RequestTimeoutMs)
 	}
 	*/
-
-	if lks.cfg.Consumer.MetadataMaxAgeMs > 0 {
-		_ = cfgMap.SetKey(MetadataMaxAgeMs, lks.cfg.Consumer.MetadataMaxAgeMs)
-	}
 
 	if lks.cfg.Consumer.ConnectionsMaxIdleMs > 0 {
 		_ = cfgMap.SetKey(ConnectionsMaxIdleMs, lks.cfg.Consumer.ConnectionsMaxIdleMs)
@@ -231,6 +223,22 @@ func (lks *LinkedService) NewConsumer(groupId string, autoCommit bool) (*kafka.C
 	if lks.cfg.Consumer.EnablePartitionEOF {
 		log.Info().Msg(semLogContext + " enabling eof partitions notifications")
 		_ = cfgMap.SetKey(EnablePartitionEOFPropertyName, lks.cfg.Consumer.EnablePartitionEOF)
+	}
+
+	if lks.cfg.Consumer.MetadataMaxAgeMs > 0 {
+		_ = cfgMap.SetKey(MetadataMaxAgeMs, lks.cfg.Consumer.MetadataMaxAgeMs)
+	}
+
+	if lks.cfg.Consumer.PartitionAssignmentStrategy != "" {
+		_ = cfgMap.SetKey(PartitionAssignmentStrategy, lks.cfg.Consumer.PartitionAssignmentStrategy)
+	}
+
+	if lks.cfg.Consumer.RetryBackOff != 0 {
+		_ = cfgMap.SetKey(RetryBackOffMs, int(lks.cfg.Consumer.RetryBackOff.Milliseconds()))
+	}
+
+	if lks.cfg.Consumer.SocketKeepaliveEnable {
+		_ = cfgMap.SetKey(SocketKeepaliveEnable, lks.cfg.Consumer.SocketKeepaliveEnable)
 	}
 
 	/*

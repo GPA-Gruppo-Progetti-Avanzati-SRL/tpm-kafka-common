@@ -15,6 +15,7 @@ const (
 	CommitModeManual                             = "manual"
 	CommitModeTransaction                        = "tx"
 	ConnectionsMaxIdleMs                         = "connections.max.idle.ms"
+	Debug                                        = "debug"
 	DeliveryTimeoutMs                            = "delivery.timeout.ms"
 	EnableAutoCommitPropertyName                 = "enable.auto.commit"
 	EnablePartitionEOFPropertyName               = "enable.partition.eof"
@@ -26,10 +27,14 @@ const (
 	LingerMs                                     = "linger.ms"
 	MaxPollIntervalMs                            = "max.poll.interval.ms"
 	MessageSendMaxRetries                        = "message.send.max.retries"
+	MessageTimeoutMs                             = "message.timeout.ms"
 	MetadataMaxAgeMs                             = "metadata.max.age.ms" // 180000
 	MetadataMaxIdleMs                            = "metadata.max.idle.ms"
+	PartitionAssignmentStrategy                  = "partition.assignment.strategy"
+	PartitionAssignmentStrategyCooperativeSticky = "cooperative-sticky"
 	RequestTimeoutMs                             = "request.timeout.ms" //60000
 	Retries                                      = "retries"
+	RetryBackOffMs                               = "retry.backoff.ms"
 	SASLMechanismPropertyName                    = "sasl.mechanism"
 	SASLPasswordPropertyName                     = "sasl.password"
 	SASLUsernamePropertyName                     = "sasl.username"
@@ -39,9 +44,6 @@ const (
 	SocketKeepaliveEnable                        = "socket.keepalive.enable" // true
 	TransactionalIdPropertyName                  = "transactional.id"
 	TransactionalTimeoutMsPropertyName           = "transaction.timeout.ms"
-	Debug                                        = "debug"
-	PartitionAssignmentStrategy                  = "partition.assignment.strategy"
-	PartitionAssignmentStrategyCooperativeSticky = "cooperative-sticky"
 
 	// Broker config noyt client TransactionalMaxTimeoutMsPropertyName        = "transaction.max.timeout.ms"
 
@@ -51,20 +53,21 @@ const (
 type ConsumerConfig struct {
 	// Consumer related configs
 	// RequestTimeoutMs      int    `mapstructure:"request-timeout-ms,omitempty" json:"request-timeout-ms,omitempty" yaml:"request-timeout-ms,omitempty"`
-	IsolationLevel              string `mapstructure:"isolation-level" json:"isolation-level" yaml:"isolation-level"`
-	MaxPollRecords              int    `mapstructure:"max-poll-records" json:"max-poll-records" yaml:"max-poll-records"`
-	AutoOffsetReset             string `mapstructure:"auto-offset-reset" json:"auto-offset-reset" yaml:"auto-offset-reset"`
-	SessionTimeoutMs            int    `mapstructure:"session-timeout-ms" json:"session-timeout-ms" yaml:"session-timeout-ms"`
-	FetchMinBytes               int    `mapstructure:"fetch-min-bytes" json:"fetch-min-bytes" yaml:"fetch-min-bytes"`
-	FetchMaxBytes               int    `mapstructure:"fetch-max-bytes" json:"fetch-max-bytes" yaml:"fetch-max-bytes"`
-	Delay                       int    `mapstructure:"delay" json:"delay" yaml:"delay"`
-	MaxRetry                    int    `mapstructure:"max-retry" json:"max-retry" yaml:"max-retry"`
-	EnablePartitionEOF          bool   `mapstructure:"enable-partition-eof" json:"enable-partition-eof" yaml:"enable-partition-eof"`
-	MetadataMaxAgeMs            int    `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
-	SocketKeepaliveEnable       bool   `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
-	ConnectionsMaxIdleMs        int    `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
-	HeartBeatIntervalMs         int    `mapstructure:"heartbeat-interval-ms,omitempty" json:"heartbeat-interval-ms,omitempty" yaml:"heartbeat-interval-ms,omitempty"`
-	PartitionAssignmentStrategy string `mapstructure:"partition-assignment-strategy,omitempty" json:"partition-assignment-strategy,omitempty" yaml:"partition-assignment-strategy,omitempty"`
+	IsolationLevel              string        `mapstructure:"isolation-level" json:"isolation-level" yaml:"isolation-level"`
+	MaxPollRecords              int           `mapstructure:"max-poll-records" json:"max-poll-records" yaml:"max-poll-records"`
+	AutoOffsetReset             string        `mapstructure:"auto-offset-reset" json:"auto-offset-reset" yaml:"auto-offset-reset"`
+	SessionTimeoutMs            int           `mapstructure:"session-timeout-ms" json:"session-timeout-ms" yaml:"session-timeout-ms"`
+	FetchMinBytes               int           `mapstructure:"fetch-min-bytes" json:"fetch-min-bytes" yaml:"fetch-min-bytes"`
+	FetchMaxBytes               int           `mapstructure:"fetch-max-bytes" json:"fetch-max-bytes" yaml:"fetch-max-bytes"`
+	Delay                       int           `mapstructure:"delay" json:"delay" yaml:"delay"`
+	MaxRetry                    int           `mapstructure:"max-retry" json:"max-retry" yaml:"max-retry"`
+	EnablePartitionEOF          bool          `mapstructure:"enable-partition-eof" json:"enable-partition-eof" yaml:"enable-partition-eof"`
+	MetadataMaxAgeMs            int           `mapstructure:"metadata-max-age-ms,omitempty" json:"metadata-max-age-ms,omitempty" yaml:"metadata-max-age-ms,omitempty"`
+	SocketKeepaliveEnable       bool          `mapstructure:"socket-keepalive-enable,omitempty" json:"socket-keepalive-enable,omitempty" yaml:"socket-keepalive-enable,omitempty"`
+	ConnectionsMaxIdleMs        int           `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
+	HeartBeatIntervalMs         int           `mapstructure:"heartbeat-interval-ms,omitempty" json:"heartbeat-interval-ms,omitempty" yaml:"heartbeat-interval-ms,omitempty"`
+	PartitionAssignmentStrategy string        `mapstructure:"partition-assignment-strategy,omitempty" json:"partition-assignment-strategy,omitempty" yaml:"partition-assignment-strategy,omitempty"`
+	RetryBackOff                time.Duration `mapstructure:"retry-backoff,omitempty" json:"retry-backoff,omitempty" yaml:"retry-backoff,omitempty"`
 }
 
 type ProducerConfig struct {
@@ -81,6 +84,7 @@ type ProducerConfig struct {
 	ConnectionsMaxIdleMs  int                             `mapstructure:"connections-max-idle-ms,omitempty" json:"connections-max-idle-ms,omitempty" yaml:"connections-max-idle-ms,omitempty"`
 	MetadataMaxIdleMs     int                             `mapstructure:"metadata-max-idle-ms,omitempty" json:"metadata-max-idle-ms,omitempty" yaml:"metadata-max-idle-ms,omitempty"`
 	LingerMs              *int                            `mapstructure:"linger-ms,omitempty" json:"linger-ms,omitempty" yaml:"linger-ms,omitempty"`
+	RetryBackOff          time.Duration                   `mapstructure:"retry-backoff,omitempty" json:"retry-backoff,omitempty" yaml:"retry-backoff,omitempty"`
 }
 
 var DefaultProducerMetrics = promutil.MetricsConfigReference{
