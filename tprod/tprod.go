@@ -277,10 +277,10 @@ func (tp *transformerProducerImpl) pollLoop() {
 			if tp.cfg.WorkMode == WorkModeBatch {
 				beginOfProcessing := time.Now()
 				batchSize := tp.processor.BatchSize()
+				metricGroup := tp.produceMetric(nil, MetricBatchSize, float64(batchSize), tp.metricLabels)
 				err := tp.processBatch(context.Background())
 				if batchSize > 0 {
-					metricGroup := tp.produceMetric(nil, MetricBatches, 1, tp.metricLabels)
-					metricGroup = tp.produceMetric(metricGroup, MetricBatchSize, float64(batchSize), tp.metricLabels)
+					metricGroup = tp.produceMetric(metricGroup, MetricBatches, 1, tp.metricLabels)
 					metricGroup = tp.produceMetric(metricGroup, MetricBatchDuration, time.Since(beginOfProcessing).Seconds(), tp.metricLabels)
 				}
 				if err != nil {
