@@ -285,8 +285,8 @@ func (tp *transformerProducerImpl) pollLoop() {
 				}
 				if err != nil {
 					logKafkaError(err).Msg(semLogContext)
+					_ = tp.produceMetric(nil, MetricBatchErrors, 1, tp.metricLabels)
 					if ErrorPolicyForError(err, tp.cfg.OnErrors) == OnErrorExit {
-						_ = tp.produceMetric(nil, MetricBatchErrors, 1, tp.metricLabels)
 						ticker.Stop()
 						tp.shutDown(err)
 						return
