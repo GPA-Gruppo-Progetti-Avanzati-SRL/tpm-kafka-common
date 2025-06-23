@@ -74,7 +74,7 @@ func (kp *KafkaProducerWrapper) Close() {
 			// No transaction in progress, ignore the error.
 			err = nil
 		} else {
-			logKafkaError(err).Msg(semLogContext + " - failed to abort transaction")
+			LogKafkaError(err).Msg(semLogContext + " - failed to abort transaction")
 		}
 	}
 
@@ -211,22 +211,22 @@ func (kp *KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kaf
 	const semLogContext = "producer-wrapper::commit-tx-for-input-partition"
 	position, err := consumer.Position([]kafka.TopicPartition{toppar})
 	if err != nil {
-		logKafkaError(err).Msg(semLogContext)
+		LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
 	consumerMetadata, err := consumer.GetConsumerGroupMetadata()
 	if err != nil {
-		logKafkaError(err).Msg(semLogContext)
+		LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
 	err = kp.SendOffsetsToTransaction(nil, position, consumerMetadata)
 	if err != nil {
-		logKafkaError(err).Interface("position", position).Msg(semLogContext)
+		LogKafkaError(err).Interface("position", position).Msg(semLogContext)
 		err = kp.AbortTransaction(nil)
 		if err != nil {
-			logKafkaError(err).Msg(semLogContext)
+			LogKafkaError(err).Msg(semLogContext)
 			return err
 		}
 
@@ -235,10 +235,10 @@ func (kp *KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kaf
 	} else {
 		err = kp.CommitTransaction(nil)
 		if err != nil {
-			logKafkaError(err).Int32("partition", toppar.Partition).Msg(semLogContext)
+			LogKafkaError(err).Int32("partition", toppar.Partition).Msg(semLogContext)
 			abortErr := kp.AbortTransaction(nil)
 			if abortErr != nil {
-				logKafkaError(err).Msg(semLogContext)
+				LogKafkaError(err).Msg(semLogContext)
 				return util.CoalesceError(abortErr, err)
 			}
 
@@ -257,7 +257,7 @@ func (kp *KafkaProducerWrapper) rewindConsumerPosition(consumer *kafka.Consumer,
 	const semLogContext = "producer-wrapper::rewind-consumer-position"
 	committed, err := consumer.Committed([]kafka.TopicPartition{toppar}, 10*1000 /* 10s */)
 	if err != nil {
-		logKafkaError(err).Msg(semLogContext)
+		LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
@@ -272,7 +272,7 @@ func (kp *KafkaProducerWrapper) rewindConsumerPosition(consumer *kafka.Consumer,
 
 		err = consumer.Seek(tp, -1)
 		if err != nil {
-			logKafkaError(err).Msg(semLogContext)
+			LogKafkaError(err).Msg(semLogContext)
 			return err
 		}
 	}

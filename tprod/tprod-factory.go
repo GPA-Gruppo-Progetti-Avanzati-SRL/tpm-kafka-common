@@ -102,7 +102,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 				p.Close()
 			}
 		*/
-		logKafkaError(err).Msg(semLogContext + " consumer creation failed")
+		LogKafkaError(err).Msg(semLogContext + " consumer creation failed")
 		return nil, err
 	}
 

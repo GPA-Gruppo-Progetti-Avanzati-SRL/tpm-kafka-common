@@ -10,7 +10,7 @@ func rewindConsumer(consumer *kafka.Consumer) error {
 
 	partitions, err := consumer.Assignment()
 	if err != nil {
-		logKafkaError(err).Msg(semLogContext + " consumer assignment error")
+		LogKafkaError(err).Msg(semLogContext + " consumer assignment error")
 		return nil
 	}
 
@@ -21,7 +21,7 @@ func rewindConsumer(consumer *kafka.Consumer) error {
 
 	committed, err := consumer.Committed(partitions, 10*1000)
 	if err != nil {
-		logKafkaError(err).Msg(semLogContext)
+		LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
@@ -37,7 +37,7 @@ func rewindConsumer(consumer *kafka.Consumer) error {
 
 	_, err = consumer.SeekPartitions(committed)
 	if err != nil {
-		logKafkaError(err).Msg(semLogContext + " seek partitions error")
+		LogKafkaError(err).Msg(semLogContext + " seek partitions error")
 		return err
 	}
 

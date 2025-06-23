@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func logKafkaError(err error) *zerolog.Event {
+func LogKafkaError(err error) *zerolog.Event {
 	var kErr kafka.Error
 	var evt *zerolog.Event
 
