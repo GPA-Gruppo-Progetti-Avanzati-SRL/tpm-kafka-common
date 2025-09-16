@@ -5,13 +5,13 @@ go 1.21
 toolchain go1.22.3
 
 require (
-	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.81
-	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.1.20
+	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.83
+	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.1.21
 	github.com/confluentinc/confluent-kafka-go/v2 v2.6.1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/zerolog v1.34.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 )
