@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common v0.1.85
-	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.1.21
+	github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive v0.1.22
 	github.com/confluentinc/confluent-kafka-go/v2 v2.11.1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/prometheus/client_golang v1.23.2
