@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+	"sync"
+
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkautil"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"net/http"
-	"strings"
-	"sync"
 )
 
 /*
@@ -359,8 +361,8 @@ func (lks *LinkedService) monitorSharedProducerAsyncEvents(producer *kafka.Produ
 			_ = setMetrics(lks.cfg.Producer.AsyncDeliveryMetrics, metricLabels)
 		case kafka.Error:
 			metricLabels[MetricIdErrorCode] = ev.Code().String()
+			kafkautil.LogKafkaError(ev).Msg(semLogContext)
 
-			log.Error().Bool("is-retryable", ev.IsRetriable()).Bool("is-fatal", ev.IsFatal()).Interface("error", ev.Error()).Interface("code", ev.Code()).Interface("text", ev.Code().String()).Msg(semLogContext)
 			_ = setMetrics(lks.cfg.Producer.AsyncDeliveryMetrics, metricLabels)
 		default:
 			log.Warn().Str("event-type", fmt.Sprint("%T", ev)).Msg(semLogContext + " un-detected event type")
