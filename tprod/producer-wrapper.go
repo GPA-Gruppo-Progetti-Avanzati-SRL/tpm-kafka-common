@@ -3,12 +3,14 @@ package tprod
 import (
 	"context"
 	"fmt"
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
-	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"sync"
+
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkautil"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/rs/zerolog/log"
 )
 
 type KafkaProducerWrapper struct {
@@ -74,7 +76,7 @@ func (kp *KafkaProducerWrapper) Close() {
 			// No transaction in progress, ignore the error.
 			err = nil
 		} else {
-			LogKafkaError(err).Msg(semLogContext + " - failed to abort transaction")
+			kafkautil.LogKafkaError(err).Msg(semLogContext + " - failed to abort transaction")
 		}
 	}
 
@@ -166,7 +168,7 @@ func (kp *KafkaProducerWrapper) AbortTransaction(ctx context.Context) error {
 			log.Info().Msg(semLogContext)
 			err := kp.producer.AbortTransaction(ctx)
 			kp.transactionStarted = false
-			if IsKafkaErrorState(err) {
+			if kafkautil.IsKafkaErrorState(err) {
 				return nil
 			}
 			return err
@@ -211,22 +213,22 @@ func (kp *KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kaf
 	const semLogContext = "producer-wrapper::commit-tx-for-input-partition"
 	position, err := consumer.Position([]kafka.TopicPartition{toppar})
 	if err != nil {
-		LogKafkaError(err).Msg(semLogContext)
+		kafkautil.LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
 	consumerMetadata, err := consumer.GetConsumerGroupMetadata()
 	if err != nil {
-		LogKafkaError(err).Msg(semLogContext)
+		kafkautil.LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
 	err = kp.SendOffsetsToTransaction(nil, position, consumerMetadata)
 	if err != nil {
-		LogKafkaError(err).Interface("position", position).Msg(semLogContext)
+		kafkautil.LogKafkaError(err).Interface("position", position).Msg(semLogContext)
 		err = kp.AbortTransaction(nil)
 		if err != nil {
-			LogKafkaError(err).Msg(semLogContext)
+			kafkautil.LogKafkaError(err).Msg(semLogContext)
 			return err
 		}
 
@@ -235,10 +237,10 @@ func (kp *KafkaProducerWrapper) CommitTransactionForInputPartition(consumer *kaf
 	} else {
 		err = kp.CommitTransaction(nil)
 		if err != nil {
-			LogKafkaError(err).Int32("partition", toppar.Partition).Msg(semLogContext)
+			kafkautil.LogKafkaError(err).Int32("partition", toppar.Partition).Msg(semLogContext)
 			abortErr := kp.AbortTransaction(nil)
 			if abortErr != nil {
-				LogKafkaError(err).Msg(semLogContext)
+				kafkautil.LogKafkaError(err).Msg(semLogContext)
 				return util.CoalesceError(abortErr, err)
 			}
 
@@ -257,7 +259,7 @@ func (kp *KafkaProducerWrapper) rewindConsumerPosition(consumer *kafka.Consumer,
 	const semLogContext = "producer-wrapper::rewind-consumer-position"
 	committed, err := consumer.Committed([]kafka.TopicPartition{toppar}, 10*1000 /* 10s */)
 	if err != nil {
-		LogKafkaError(err).Msg(semLogContext)
+		kafkautil.LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
@@ -272,7 +274,7 @@ func (kp *KafkaProducerWrapper) rewindConsumerPosition(consumer *kafka.Consumer,
 
 		err = consumer.Seek(tp, -1)
 		if err != nil {
-			LogKafkaError(err).Msg(semLogContext)
+			kafkautil.LogKafkaError(err).Msg(semLogContext)
 			return err
 		}
 	}

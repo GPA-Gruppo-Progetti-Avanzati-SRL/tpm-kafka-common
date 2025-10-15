@@ -3,11 +3,13 @@ package tprod
 import (
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkautil"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog/log"
-	"sync"
 )
 
 const (
@@ -68,7 +70,7 @@ func (p *messageProducerImpl) Produce(msgs ...Message) error {
 	if !p.isBuffered() {
 		err = p.produce2Topics(msgs)
 		if err != nil {
-			LogKafkaError(err).Msg(semLogContext)
+			kafkautil.LogKafkaError(err).Msg(semLogContext)
 		} else {
 			producedMsgs = len(msgs)
 		}
@@ -77,7 +79,7 @@ func (p *messageProducerImpl) Produce(msgs ...Message) error {
 		if p.isOverQuota() {
 			err = p.produce2Topics(p.messages)
 			if err != nil {
-				LogKafkaError(err).Msg(semLogContext)
+				kafkautil.LogKafkaError(err).Msg(semLogContext)
 			} else {
 				producedMsgs = len(p.messages)
 			}
@@ -87,7 +89,7 @@ func (p *messageProducerImpl) Produce(msgs ...Message) error {
 
 	p.producedMessages += producedMsgs
 	if err != nil {
-		LogKafkaError(err).Msg(semLogContext)
+		kafkautil.LogKafkaError(err).Msg(semLogContext)
 	}
 
 	return err
@@ -105,7 +107,7 @@ func (p *messageProducerImpl) Flush() error {
 	if len(p.messages) > 0 {
 		err = p.produce2Topics(p.messages)
 		if err != nil {
-			LogKafkaError(err).Msg(semLogContext)
+			kafkautil.LogKafkaError(err).Msg(semLogContext)
 		} else {
 			p.producedMessages += len(p.messages)
 		}
@@ -203,7 +205,7 @@ func (p *messageProducerImpl) produce2Topic(m Message) error {
 		p.metricsLabels["topic-name"] = tcfg.Name
 		p.produceMetric(nil, MetricMessagesToTopic, 1, p.metricsLabels)
 		if err != nil {
-			LogKafkaError(err).Msg(semLogContext)
+			kafkautil.LogKafkaError(err).Msg(semLogContext)
 			return err
 		}
 	}

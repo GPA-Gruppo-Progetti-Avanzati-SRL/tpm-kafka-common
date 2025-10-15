@@ -3,6 +3,7 @@ package tprod
 import (
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkalks"
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkautil"
 	"github.com/rs/zerolog/log"
 	"sync"
 
@@ -102,7 +103,7 @@ func NewTransformerProducer(cfg *TransformerProducerConfig, wg *sync.WaitGroup, 
 				p.Close()
 			}
 		*/
-		LogKafkaError(err).Msg(semLogContext + " consumer creation failed")
+		kafkautil.LogKafkaError(err).Msg(semLogContext + " consumer creation failed")
 		return nil, err
 	}
 

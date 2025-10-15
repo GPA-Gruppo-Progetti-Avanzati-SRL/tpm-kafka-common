@@ -1,6 +1,7 @@
 package tprod
 
 import (
+	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-kafka-common/kafkautil"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/rs/zerolog/log"
 )
@@ -10,7 +11,7 @@ func rewindConsumer(consumer *kafka.Consumer) error {
 
 	partitions, err := consumer.Assignment()
 	if err != nil {
-		LogKafkaError(err).Msg(semLogContext + " consumer assignment error")
+		kafkautil.LogKafkaError(err).Msg(semLogContext + " consumer assignment error")
 		return nil
 	}
 
@@ -21,7 +22,7 @@ func rewindConsumer(consumer *kafka.Consumer) error {
 
 	committed, err := consumer.Committed(partitions, 10*1000)
 	if err != nil {
-		LogKafkaError(err).Msg(semLogContext)
+		kafkautil.LogKafkaError(err).Msg(semLogContext)
 		return err
 	}
 
@@ -37,7 +38,7 @@ func rewindConsumer(consumer *kafka.Consumer) error {
 
 	_, err = consumer.SeekPartitions(committed)
 	if err != nil {
-		LogKafkaError(err).Msg(semLogContext + " seek partitions error")
+		kafkautil.LogKafkaError(err).Msg(semLogContext + " seek partitions error")
 		return err
 	}
 
