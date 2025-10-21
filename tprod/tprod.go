@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-common/util/promutil"
 	"github.com/GPA-Gruppo-Progetti-Avanzati-SRL/tpm-http-archive/hartracing"
@@ -12,10 +13,11 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/rs/zerolog/log"
 	"io"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -46,7 +48,8 @@ type TransformerProducerError struct {
 func (e *TransformerProducerError) Error() string { return e.Level + ": " + e.Err.Error() }
 
 type transformerProducerImpl struct {
-	cfg *TransformerProducerConfig
+	cfg          *TransformerProducerConfig
+	isAutoCommit bool
 
 	wg               *sync.WaitGroup
 	shutdownSync     sync.Once
@@ -162,6 +165,12 @@ func (tp *transformerProducerImpl) Start() {
 	// Add to wait group
 	if tp.wg != nil {
 		tp.wg.Add(1)
+	}
+
+	tp.consumer, err = kafkalks.NewKafkaConsumer(tp.consumerBrokerName, tp.cfg.GroupId, tp.isAutoCommit)
+	if err != nil {
+		kafkautil.LogKafkaError(err).Msg(semLogContext + " consumer creation failed")
+		return
 	}
 
 	err = tp.createProducers(false)
