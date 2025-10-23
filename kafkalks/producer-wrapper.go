@@ -2,6 +2,7 @@ package kafkalks
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -20,15 +21,44 @@ type KafkaProducerWrapper struct {
 	mu                 *sync.Mutex
 }
 
-/*
-func NewKafkaProducerWrapper(n string, p *kafka.Producer, delivChan chan kafka.Event) KafkaProducerWrapper {
+func (lks *LinkedService) NewKafkaProducerWrapper(ctx context.Context, name string, transactionId string, toppar kafka.TopicPartition, withDeliveryChannel bool, beginTransaction bool) (*KafkaProducerWrapper, error) {
+	const semLogContext = "partitioned-message-producer::new-kafka-producer-wrapper"
+
+	if toppar.Partition != kafka.PartitionAny && transactionId != "" {
+		transactionId = fmt.Sprintf("%s-p%d", transactionId, int(toppar.Partition))
+	}
+
+	p, err := lks.NewProducer(ctx, transactionId)
+	if err != nil {
+		return nil, err
+	}
+
+	producerName := name
+	if toppar.Partition != kafka.PartitionAny {
+		producerName = fmt.Sprintf("%s-p%d", producerName, int(toppar.Partition))
+	}
+
 	var mu *sync.Mutex
-	if delivChan != nil {
+	var deliveryChannel chan kafka.Event
+	if withDeliveryChannel {
+		deliveryChannel = make(chan kafka.Event)
 		mu = new(sync.Mutex)
 	}
-	return KafkaProducerWrapper{name: n, producer: p, delivChan: delivChan, mu: mu}
+
+	kp := &KafkaProducerWrapper{name: producerName, producer: p, delivChan: deliveryChannel, mu: mu}
+	if transactionId != "" {
+		kp.isTransactional = true
+		if beginTransaction {
+			err = kp.BeginTransaction()
+			if err != nil {
+				return kp, err
+			}
+		} else {
+			log.Warn().Msg(semLogContext + " - transactional producer created without starting transaction")
+		}
+	}
+	return kp, nil
 }
-*/
 
 func (kp *KafkaProducerWrapper) Close() {
 	const semLogContext = "producer-wrapper::close"
